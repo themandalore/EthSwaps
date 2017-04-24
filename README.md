@@ -7,8 +7,11 @@ Meteor
 
 
 To start:
+
 meteor create dapp
+
 meteor add Ethereum:web3
+
 meteor add Ethereum:tools
 
 
