@@ -1,93 +1,68 @@
 
-pragma solidity ^0.4.0;
+pragma solidity ^0.4.6;
 ///add safe math?
 
 contract Swap {
-	event ContractStart(address bidder, uint amount); // Event
-	event ContractEnd(address bidder, uint amount); // Event 
-	event Transfer(address indexed _from, address indexed _to, uint256 _value);
 
-	struct Counterparty1 {
-		address public constant Counterparty1;
-		enum State { Type1, Type2, Type3, Non_ECP } State public ECP_Flag_1;
-		uint Margin1;
-		uint Margin2;
-		bool Long;
-		}
-
-	 mapping(bytes32 => Counterparty1) public counterparty1;
-
-	struct Counterparty2 {
-		address public constant Counterparty2;
-		enum State { Type1, Type2, Type3, Non_ECP } State public ECP_Flag_2;
-	}
-
-	mapping(bytes32 => Counterparty2) public counterparty2;
-  
+  address public constant Counterparty1;
+  uint public Margin1;
+  uint public Margin2;
+  bool public Long;
+  address public Counterparty2;
   uint256 public Notional;
-  address public Oracle;
+  address public OracleID;
   uint public EndDate;
   bool public Cancellations;
-  bool ended;
+  string public SwapState; //use open,started,ended
   string public Creator; ///contract hash with creator nonce
+  uint256 public StartValue;
 
- ///Get Oracle part
+ Oracle oracle;
 
-  // "oracle" is of type "Oracle" which is a contract ^
-  Oracle oracle;
-
-  // Define the Type in this context
-  struct DocumentStruct{
-    bytes32 name;
-    uint value;
-  }    
-
-  function RetrieveData(bytes32 key) 
-    public
-    constant
-    returns(string, uint) 
-    oracle = Oracle(OracleID);
-  {
-    // Declare a temporary "doc" to hold a DocumentStruct
-    DocumentStruct memory doc;
-    // Get it from the "public" mapping's free getter.
-    (doc.name, doc.value) = oracle.documentStructs(key);
-    // return values with a fixed sized layout
-    var tname = bytes32ToString(doc.name);
-    return(tname, doc.value);
-  }
-  
 ///Basic swap contract
 function balanceOf(address _owner) constant returns (uint256 balance);
 function transfer(address _to, uint256 _value) returns (bool success);
 
 //take margin from party1 and place it on the blockchain
-function Swap (address Owner, bool ECP_Flag_1, uint256 Notional, uint256 Margin, address OracleID, uint256 EndDate, bool Cancellations) {
-	if (ECP_Flag_1 == Non_ECP ) throw;
-	if (balances[Owner] < Margin) return;
+function Swap (address _Owner, uint256 _Notional, uint256 _Margin1, uint256 _Margin2, address _OracleID, uint256 _EndDate, bool _Cancellations) {
+	if (length(SwapState) > 0) throw;
+	if (balances[_Owner] < Margin) return;
+	SwapState = "open";
+	counterparty1[1].Counterparty1  = _Owner;
+    Notional = _Notional;
+    if (msg.value < _Margin1) throw;
+    else Margin1 = _Margin1;
+    if (msg.value > _Margin1) {
+    	 ref = msg.value - Margin1;
+    	 msg.sender.transfer(ref);
+    	}
+    Margin2 = _Margin2;
+    OracleID = _OracleID;
+    EndDate = _EndDate;
+    Cancellations = _Cancellations;
+    return true;
 	//take money into contract
-
-
 }
 
 //take margin from party2 and place it on the blockchain
-function EnterSwap (address Counterparty2 bool 	ECP_Flag_2) {
-	if (ended) throw;
-	if (ECP_Flag_1== Non_ECP ) throw;
-	if (ECP_Flag_2 == Non_ECP ) throw;
+function EnterSwap (address Counterparty2) {
+	if (SwapState != "open") throw;
 	if (Counterparty2 == Counterparty1) throw;
+	if (msg.value < _Margin2) throw;
+    else Margin2 = _Margin2;
+    if (msg.value > _Margin2) {
+    	 ref = msg.value - Margin2;
+    	 msg.sender.transfer(ref);
+	SwapState = "started";
 	StartValue = OracleValue * Notional;
+	return true;
 	//take money into contract and start the swap
 }
-
-function transfer(address _to, uint256 _value) returns (bool success){
-
 }
+
 //Calculate payments and pay at the end of the swap
-function PaySwap() payable {
-	if (ECP_Flag_1 == Non_ECP ) throw;
-	if (ECP_Flag_2 == Non_ECP ) throw;
-	if (ended) throw;
+function PaySwap () {
+	if (SwapState == "ended") throw;
 	var OracleName, OracleValue = RetrieveData(bytes32 EndDate);
 	if (length(OracleName) >0) {
             // Get current value of swap and pay out max of margin or oraclevalue * notional
@@ -117,16 +92,38 @@ function PaySwap() payable {
              	}
              	}
              	Counterparty2.send(payment);
-            ended = true;
+            SwapState = "ended";
         		}
        		}
-        }
 }
 
 function ExitSwap () {
 	if (Cancellations == False) throw;
-	if (ended) throw;
+	if (SwapState == "ended") throw;
+		Counterparty1.send(Margin1);
+	if (SwapState=="started") {
+		Counterparty2.send(Margin2);
+	}
+	return true;
 }
+
+ struct DocumentStruct{
+    bytes32 name;
+    uint value;
+  }    
+
+  function RetrieveData(bytes32 key) 
+    public
+    constant
+    returns(string, uint) 
+    oracle = Oracle(OracleID);
+  {
+    DocumentStruct memory doc;
+    (doc.name, doc.value) = oracle.documentStructs(key);
+    var tname = bytes32ToString(doc.name);
+    return(tname, doc.value);
+  }
+  
 
 function bytes32ToString(bytes32 x) constant returns (string) {
     bytes memory bytesString = new bytes(32);
