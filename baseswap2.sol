@@ -25,7 +25,7 @@ contract Oracle{
 contract Swap {
 	enum SwapState {available,open,started,ended}
 	SwapState public currentState;
-	address public counterpary1;
+	address public counterparty1;
 	address public counterparty2;
 	uint public notional;
 	bool public long;
@@ -42,7 +42,7 @@ contract Swap {
 		currentState = SwapState.available;
 	}
 
-	function CreateSwap(uint _notional, bool _long, address _oracleID, bytes32 _startDate, bytes32 _endDate) onlyState(SwapState.available) paybable returns (bool) {
+	function CreateSwap(uint _notional, bool _long, address _oracleID, bytes32 _startDate, bytes32 _endDate) onlyState(SwapState.available) payable returns (bool) {
 		margin = msg.value;
 		counterparty1 = msg.sender;
 		notional = _notional;
@@ -67,7 +67,7 @@ contract Swap {
 
 	function PaySwap() onlyState(SwapState.started) returns (bool){
 
-		var endValue = RetrieveData(_endDate);
+		var endValue = RetrieveData(endDate);
 		var change = notional * (startValue - endValue) / startValue;
 		var lvalue = change >= margin ? (this.balance) : (margin + change);
 		var svalue = change <= -margin ? (this.balance) : (margin - change);
@@ -102,7 +102,7 @@ contract Swap {
 	    constant
 	    returns(uint) 
 	  {
-	    oracle = Oracle(OracleID);
+	    var oracle = Oracle(oracleID);
 	    DocumentStruct memory doc;
 	    (doc.name, doc.value) = oracle.documentStructs(key);
 	    return doc.value;
