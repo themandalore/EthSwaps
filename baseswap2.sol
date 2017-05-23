@@ -37,21 +37,22 @@ contract Swap {
 
 	modifier onlyState(SwapState expectedState) { if (expectedState == currentState) {_;} else {throw; } }
 
-	function Swap(){
+	function Swap(address OAddress){
+	    d = Oracle(OAddress);
+	    oracleID = OAddress;
 		creator = msg.sender;
 		currentState = SwapState.available;
 	}
 	
 	Oracle d;
 
-	function CreateSwap(uint _notional, bool _long, address _oracleID, bytes32 _startDate, bytes32 _endDate) onlyState(SwapState.available) payable returns (bool) {
+	function CreateSwap(uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) onlyState(SwapState.available) payable returns (bool) {
 		margin = msg.value;
 		counterparty1 = msg.sender;
 		notional = _notional;
 		long = _long;
 		currentState = SwapState.open;
 		endDate = _endDate;
-		oracleID = _oracleID;
 		startValue = RetrieveData(_startDate);
 		return true;
 	}
@@ -68,8 +69,7 @@ contract Swap {
 	}
 
 	function PaySwap() onlyState(SwapState.started) returns (bool){
-
-		var endValue = RetrieveData(endDate);
+	    var endValue = RetrieveData(endDate);
 		var change = notional * (startValue - endValue) / startValue;
 		var lvalue = change >= margin ? (this.balance) : (margin + change);
 		var svalue = change <= -margin ? (this.balance) : (margin - change);
@@ -98,17 +98,17 @@ contract Swap {
 	    bytes32 name;
 	    uint value;
 	  }    
-
-	  function RetrieveData(bytes32 key) 
-	    public
-	    constant
-	    returns(uint) 
-	  {
-	    d = Oracle(oracleID);
-	    DocumentStruct memory doc;
-	    (doc.name, doc.value) = d.documentStructs(key);
-	    return (doc.value);
-	  }
+          function RetrieveData(bytes32 key) 
+            public
+            constant
+            returns(uint) 
+          {
+            // Declare a temporary "doc" to hold a DocumentStruct
+            DocumentStruct memory doc;
+            // Get it from the "public" mapping's free getter.
+            (doc.name, doc.value) = d.documentStructs(key);
+            return doc.value;
+         }
 
 	function bytes32ToString(bytes32 x) constant returns (string) {
     bytes memory bytesString = new bytes(32);
