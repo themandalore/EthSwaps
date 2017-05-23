@@ -104,10 +104,10 @@ contract Swap {
 	    constant
 	    returns(uint) 
 	  {
-	    var d = Oracle(oracleID);
+	    d = Oracle(oracleID);
 	    DocumentStruct memory doc;
 	    (doc.name, doc.value) = d.documentStructs(key);
-	    return doc.value;
+	    return (doc.value);
 	  }
 
 	function bytes32ToString(bytes32 x) constant returns (string) {
