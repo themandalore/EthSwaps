@@ -41,6 +41,8 @@ contract Swap {
 		creator = msg.sender;
 		currentState = SwapState.available;
 	}
+	
+	Oracle d;
 
 	function CreateSwap(uint _notional, bool _long, address _oracleID, bytes32 _startDate, bytes32 _endDate) onlyState(SwapState.available) payable returns (bool) {
 		margin = msg.value;
@@ -102,9 +104,9 @@ contract Swap {
 	    constant
 	    returns(uint) 
 	  {
-	    var oracle = Oracle(oracleID);
+	    var d = Oracle(oracleID);
 	    DocumentStruct memory doc;
-	    (doc.name, doc.value) = oracle.documentStructs(key);
+	    (doc.name, doc.value) = d.documentStructs(key);
 	    return doc.value;
 	  }
 
