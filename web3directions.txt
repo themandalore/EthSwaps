@@ -1,0 +1,72 @@
+From putty:
+Host name:
+ec2-user@ec2-52-42-139-211.us-west-2.compute.amazonaws.com 
+
+Then in SSH/Auth click browse and link to EthDevops.ppk
+click connect, then once open, right click top box and click new session 
+click new session again (one node, one testrpc, one base terminal)
+
+20170518,"BTCUSD"1000
+20170519,"BTCUSD",900
+
+From base:
+testrpc
+
+// Make a new folder
+// Create pacakge.json file
+{
+  "dependencies": {
+    "web3": "0.17.0-alpha"
+  }
+}
+
+// Install dependencies (need to be inside the same folder as package.json)
+npm install
+
+// Run node console (need to be inside the same folder as package.json)
+node
+
+// INSIDE NODE CONSOLE
+
+
+var Web3 = require("web3")
+var web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"))
+web3.eth.accounts
+
+var account1 = web3.eth.accounts[0]
+var account2 = web3.eth.accounts[1]
+
+var oracleabi = [{"constant":false,"inputs":[{"name":"key","type":"bytes32"},{"name":"value","type":"uint256"}],"name":"StoreDocument","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"documentStructs","outputs":[{"name":"value","type":"uint256"}],"payable":false,"type":"function"}]
+var swapabi = [{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"long","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"EnterSwap","outputs":[{"name":"","type":"bool"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"currentState","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"startValue","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty2","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty1","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveData","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"margin","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_notional","type":"uint256"},{"name":"_long","type":"bool"},{"name":"_startDate","type":"bytes32"},{"name":"_endDate","type":"bytes32"}],"name":"CreateSwap","outputs":[{"name":"","type":"bool"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"endDate","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"endValue","type":"uint256"},{"name":"SVal","type":"uint256"}],"name":"PaySwap","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"notional","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"inputs":[{"name":"OAddress","type":"address"}],"payable":false,"type":"constructor"}]
+
+var balance = (acct) => { return web3.fromWei(web3.eth.getBalance(acct), 'ether').toNumber()}
+var ibal1 = balance(account1)
+var ibal2 = balance(account2)
+
+var oracleContract = web3.eth.contract(oracleabi)
+var oracleInstance = oracleContract.new({data:' ..', from: account1 , gas: 3000000});
+var oracleAddress = oracleInstance.address
+web3.eth.defaultAccount = account1
+oracleInstance.StoreDocument("20170525",1000,{value: 0, gas: 3000000});
+
+var swapContract = web3.eth.contract(swapabi)
+var margin = web3.toWei('10', 'ether')
+var swapInstance = swapContract.new(oracleAddress,{data:'...',from: account1 , gas: 3000000});
+swapInstance.CreateSwap(100,true,"20170525","20170526",{value: margin, gas: 3000000})
+web3.eth.defaultAccount = account2
+swapInstance.EnterSwap({value: margin, gas: 3000000})
+
+oracleInstance.StoreDocument("20170526",1000,{value: 0, gas: 3000000});
+var oracleAddress = oracleInstance.address
+swapInstance.RetrieveData(1234,{value:0, gas: 3000000})
+
+oracleInstance.StoreDocument("20170521","BTCUSD",1100,{value: 0, gas: 3000000});
+
+/*Works up to her...unless oracle is broke*/
+
+swapInstance.PaySwap(1100,1000{value: 0, gas: 3000000});
+
+
+swapInstance.RetrieveData("20170525",{value: 0, gas: 3000000});
+
+pragma solidity 0.4.6; contract HelloWorld { function displayMessage() constant returns (string) {return "Hello from a smart contract";}}
