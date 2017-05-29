@@ -1,152 +1,112 @@
+pragma solidity ^0.4.6;
 
-pragma solidity ^0.4.0;
-///add safe math?
+contract Oracle{
 
-contract Swap {
-	event ContractStart(address bidder, uint amount); // Event
-	event ContractEnd(address bidder, uint amount); // Event 
-	event Transfer(address indexed _from, address indexed _to, uint256 _value);
-
-	struct Counterparty1 {
-		address public constant Counterparty1;
-		enum State { Type1, Type2, Type3, Non_ECP } State public ECP_Flag_1;
-		uint Margin1;
-		uint Margin2;
-		bool Long;
-		}
-
-	 mapping(bytes32 => Counterparty1) public counterparty1;
-
-	struct Counterparty2 {
-		address public constant Counterparty2;
-		enum State { Type1, Type2, Type3, Non_ECP } State public ECP_Flag_2;
-	}
-
-	mapping(bytes32 => Counterparty2) public counterparty2;
-  
-  uint256 public Notional;
-  address public Oracle;
-  uint public EndDate;
-  bool public Cancellations;
-  bool ended;
-  string public Creator; ///contract hash with creator nonce
-
- ///Get Oracle part
-
-  // "oracle" is of type "Oracle" which is a contract ^
-  Oracle oracle;
-
-  // Define the Type in this context
   struct DocumentStruct{
-    bytes32 name;
-    uint value;
-  }    
+     uint value;
+   }
 
-  function RetrieveData(bytes32 key) 
-    public
-    constant
-    returns(string, uint) 
-    oracle = Oracle(OracleID);
-  {
-    // Declare a temporary "doc" to hold a DocumentStruct
-    DocumentStruct memory doc;
-    // Get it from the "public" mapping's free getter.
-    (doc.name, doc.value) = oracle.documentStructs(key);
-    // return values with a fixed sized layout
-    var tname = bytes32ToString(doc.name);
-    return(tname, doc.value);
+  mapping(bytes32 => DocumentStruct) public documentStructs;
+
+  function StoreDocument(bytes32 key, uint value) returns (bool success) {
+    documentStructs[key].value = value;
+   return true;
   }
-  
-///Basic swap contract
-function balanceOf(address _owner) constant returns (uint256 balance);
-function transfer(address _to, uint256 _value) returns (bool success);
-
-//take margin from party1 and place it on the blockchain
-function Swap (address Owner, bool ECP_Flag_1, uint256 Notional, uint256 Margin, address OracleID, uint256 EndDate, bool Cancellations) {
-	if (ECP_Flag_1 == Non_ECP ) throw;
-	if (balances[Owner] < Margin) return;
-	//take money into contract
-
 
 }
 
-//take margin from party2 and place it on the blockchain
-function EnterSwap (address Counterparty2 bool 	ECP_Flag_2) {
-	if (ended) throw;
-	if (ECP_Flag_1== Non_ECP ) throw;
-	if (ECP_Flag_2 == Non_ECP ) throw;
-	if (Counterparty2 == Counterparty1) throw;
-	StartValue = OracleValue * Notional;
-	//take money into contract and start the swap
-}
+/*
+Variables to add for regswap:
+ECP flag 
+LEI instead of counterparty
+currency field
 
-function transfer(address _to, uint256 _value) returns (bool success){
+on oracle:
+name (rate)
 
-}
-//Calculate payments and pay at the end of the swap
-function PaySwap() payable {
-	if (ECP_Flag_1 == Non_ECP ) throw;
-	if (ECP_Flag_2 == Non_ECP ) throw;
-	if (ended) throw;
-	var OracleName, OracleValue = RetrieveData(bytes32 EndDate);
-	if (length(OracleName) >0) {
-            // Get current value of swap and pay out max of margin or oraclevalue * notional
-            EndValue = OracleValue * Notional;
-            if (msg.sender == Counterparty1){
-            	if (long){
-            		var change = EndValue - StartValue;
-            		var payment = change > margin2 ? margin2 : change;
-             		if (payment <=0) throw;
-             	}
-             	else{
-             		var change = StartValue - EndValue;
-            		var payment = change > margin2 ? margin2 : change;
-             		if (payment <=0) throw;
-             	}
-             	Counterparty1.send(payment);
-             else{
-            	if (!long){
-					var change = StartValue-EndValue;
-            		var payment = change > margin1 ? margin1 : change;
-             		if (payment <=0) throw;
-             	}
-             	else{
-             		var change = EndValue-StartValue;
-            		var payment = change > margin1 ? margin1 : change;
-             		if (payment <=0) throw;
-             	}
-             	}
-             	Counterparty2.send(payment);
-            ended = true;
-        		}
-       		}
-        }
-}
 
-function ExitSwap () {
-	if (Cancellations == False) throw;
-	if (ended) throw;
-}
+Varialbes parties must submit to regulator
 
-function bytes32ToString(bytes32 x) constant returns (string) {
-    bytes memory bytesString = new bytes(32);
-    uint charCount = 0;
-    for (uint j = 0; j < 32; j++) {
-        byte char = byte(bytes32(uint(x) * 2 ** (8 * j)));
-        if (char != 0) {
-            bytesString[charCount] = char;
-            charCount++;
-        }
+
+Variables parties must keep for inquiry:
+
+*/
+contract Swap {
+  enum SwapState {available,open,started,ended} SwapState public currentState;
+  address public counterparty1;
+  address public counterparty2;
+  uint public notional;
+  bool public long;
+  uint public margin;
+  address public oracleID;
+  bytes32 public endDate;
+  address public creator; 
+  uint256 public startValue;
+
+  modifier onlyState(SwapState expectedState) { if (expectedState == currentState) {_;} else {throw; } }
+
+  function Swap(address OAddress){
+      d = Oracle(OAddress);
+      oracleID = OAddress;
+      creator = msg.sender;
+      currentState = SwapState.available;
+  }
+
+  Oracle d;
+
+  function CreateSwap(uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) onlyState(SwapState.available) payable returns (bool) {
+      margin = msg.value;
+      counterparty1 = msg.sender;
+      notional = _notional;
+      long = _long;
+      currentState = SwapState.open;
+      endDate = _endDate;
+      startValue = RetrieveData(_startDate);
+      return true;
+  }
+
+  function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
+
+    if(msg.value == margin) {
+        counterparty2 = msg.sender;
+        currentState = SwapState.started;
+        return true;
+    } else {
+      throw;
     }
-    bytes memory bytesStringTrimmed = new bytes(charCount);
-    for (j = 0; j < charCount; j++) {
-        bytesStringTrimmed[j] = bytesString[j];
-    }
-    return string(bytesStringTrimmed);
-}
+  }
+      mapping(address => uint256) balances;
+      mapping(address => mapping (address => uint256)) allowed;
 
-function(){
-	throw;
-}
+  function PaySwap() onlyState(SwapState.started) returns (bool){
+      var endValue = RetrieveData(endDate);
+      var change = notional * (startValue - endValue) / startValue;
+      var lvalue = change >= margin ? (this.balance) : (margin + change);
+      var svalue = change <= -margin ? (this.balance) : (margin - change);
+      var lparty = long == true ? counterparty1 : counterparty2;
+      var sparty = long == true ? counterparty2 : counterparty1;
+      if (lvalue > 0 ){
+        lparty.send(lvalue)
+      }
+      if (svalue > 0){
+        sparty.send(svalue)
+        }
+      currentState = SwapState.ended;
+      return true;
+  }
+
+      function murder(){
+        creator.send(this.balance);
+      }
+
+
+   struct DocumentStruct{
+      uint value;
+    }    
+        function RetrieveData(bytes32 key) public constant returns(uint) {
+        DocumentStruct memory doc;
+        doc.value = d.documentStructs(key);
+        return doc.value;
+       }
 
 }

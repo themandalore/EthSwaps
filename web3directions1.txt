@@ -1,0 +1,215 @@
+From putty:
+Host name:
+ec2-user@ec2-52-42-139-211.us-west-2.compute.amazonaws.com 
+
+Then in SSH/Auth click browse and link to EthDevops.ppk
+click connect, then once open, right click top box and click new session 
+click new session again (one node, one testrpc, one base terminal)
+
+20170518,"BTCUSD"1000
+20170519,"BTCUSD",900
+
+From base:
+testrpc
+
+// Make a new folder
+// Create pacakge.json file
+{
+  "dependencies": {
+    "web3": "0.17.0-alpha",
+    "solc": "^0.4.4"
+  }
+}
+
+// Install dependencies (need to be inside the same folder as package.json)
+npm install
+
+// Run node console (need to be inside the same folder as package.json)
+node
+
+// INSIDE NODE CONSOLE
+
+
+var Web3 = require("web3")
+var solc = require("solc")
+var web3 = new Web3(new Web3.providers.HttpProvider("http://localhost:8545"))
+web3.eth.accounts
+
+var account1 = web3.eth.accounts[0]
+var account2 = web3.eth.accounts[1]
+
+var oracleabi = [{"constant":false,"inputs":[{"name":"key","type":"bytes32"},{"name":"value","type":"uint256"}],"name":"StoreDocument","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"documentStructs","outputs":[{"name":"value","type":"uint256"}],"payable":false,"type":"function"}]
+var swapabi =[{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"long","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"EnterSwap","outputs":[{"name":"","type":"bool"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"currentState","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_from","type":"address"},{"name":"_to","type":"address"},{"name":"_amount","type":"uint256"}],"name":"transferFrom","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"startValue","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty2","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty1","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveData","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"margin","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"_notional","type":"uint256"},{"name":"_long","type":"bool"},{"name":"_startDate","type":"bytes32"},{"name":"_endDate","type":"bytes32"}],"name":"CreateSwap","outputs":[{"name":"","type":"bool"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"endDate","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"PaySwap","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"exit","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"notional","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"inputs":[{"name":"OAddress","type":"address"}],"payable":false,"type":"constructor"}]
+
+var balance = (acct) => { return web3.fromWei(web3.eth.getBalance(acct), 'ether').toNumber()}
+var ibal1 = balance(account1)
+var ibal2 = balance(account2)
+
+var oracleContract = web3.eth.contract(oracleabi)
+var oracleInstance = oracleContract.new({data:' ..', from: account1 , gas: 3000000});
+var oracleAddress = oracleInstance.address
+web3.eth.defaultAccount = account1
+oracleInstance.StoreDocument(1234,1000,{value: 0, gas: 3000000});
+
+var swapContract = web3.eth.contract(swapabi)
+var margin = web3.toWei('10', 'ether')
+var swapInstance = swapContract.new(oracleAddress,{data:'...',from: account1 , gas: 3000000});
+swapInstance.CreateSwap(100,true,oracleAddress,1234,1235,{value: margin, gas: 3000000})
+web3.eth.defaultAccount = account2
+swapInstance.EnterSwap({value: margin, gas: 3000000})
+
+swapInstance.exit({value:0, gas: 3000000})
+oracleInstance.StoreDocument("20170521","BTCUSD",900,{value: 0, gas: 3000000});
+this
+/*Works up to her...unless oracle is broke*/
+swapInstance.transferFrom(sad,account1,margin,{value: 0, gas: 3000000})
+web3.eth.sendTransaction({from:account2, to:account1, value: web3.toWei(1, "ether")})
+swapInstance.PaySwap({value: 0, gas: 3000000});
+swapInstance.PaySwap({value: 0, gas: 3000000});
+swapInstance.RetrieveData(1234);
+
+
+var source = `pragma solidity ^0.4.6;
+contract Swap {
+	address public counterparty1;
+	address public counterparty2;
+	uint public notional;
+	uint public margin;
+
+	function Swap(uint _notional)  payable{
+		margin = msg.value;
+		counterparty1 = msg.sender;
+		notional = _notional;
+	}
+
+	function EnterSwap()  payable returns (bool) {
+
+		if(msg.value == margin) {
+     		counterparty2 = msg.sender;
+      		return true;
+	    } else {
+	      throw;
+	    }
+	}
+
+	function PaySwap(address winner) returns (bool){
+
+		winner.send(this.balance);
+		return true;
+	}
+
+}`
+var compiled = solc.compile(source)
+var bytecode = compiled.contracts[':Swap'].bytecode
+var abi = JSON.parse(compiled.contracts[':Swap'].interface)
+var swapContract = web3.eth.contract(abi)
+balance(account1) ; 
+balance(account2);
+var deployed = swapContract.new(1000,{from: account1, data: bytecode, gas: 4700000, gasPrice: 5, value: web3.toWei(10,'ether')}, (error, contract) => {})
+deployed.notional.call()
+deployed.margin.call()
+balance(account1) ; 
+balance(account2); 
+balance(deployed.address);
+deployed.EnterSwap({from: account2, data: bytecode, gas: 4700000, gasPrice: 5, value: web3.toWei(10,'ether')}, (error, contract) => {})
+deployed.notional.call()
+deployed.margin.call()
+balance(account1) ; 
+balance(account2); 
+balance(deployed.address);
+deployed.PaySwap(account1,{from: account1, data: bytecode, gas: 4700000, gasPrice: 5}, (error, contract) => {})
+balance(account1) ;
+ balance(account2); 
+balance(deployed.address);
+
+
+.....oracletest
+var source= `pragma solidity ^0.4.11;
+
+contract Oracle{
+    struct DocumentStruct{
+        uint value;
+    }
+
+    mapping(bytes32 => DocumentStruct) public documentStructs;
+
+    function StoreDocument(bytes32 key, uint value) returns (bool success) {
+        documentStructs[key].value = value;
+        return true;
+    }
+
+}
+
+contract Payment {
+    address public counterparty1;
+    address public counterparty2;
+    uint public margin;
+    address public oracleID;
+
+
+    function Payment(address _cp2, address _oracleID) payable{
+        margin = msg.value;
+        counterparty1 = msg.sender;
+        counterparty2 = _cp2;
+        oracleID = _oracleID;
+    }
+
+
+    function Pay(bytes32 _keyval) payable returns (bool){
+        var pValue = RetrieveData(_keyval);
+        var npvalue = pValue >= margin ? (this.balance) : pValue;
+        if (npvalue > 0 ){
+            counterparty2.send(npvalue);
+            return true;
+        }
+        else{
+            throw;
+        }
+    }
+
+    struct DocumentStruct{
+        uint value;
+    }    
+    Oracle oracle;
+
+    function RetrieveData(bytes32 key) 
+    public
+    constant
+    returns(uint) 
+    {
+        oracle = Oracle(oracleID);
+        DocumentStruct memory doc;
+        (doc.value) = oracle.documentStructs(key);
+        return doc.value;
+    }
+}`
+
+var compiled = solc.compile(source)
+var obytecode = compiled.contracts[':Oracle'].bytecode
+var pbytecode = compiled.contracts[':Payment'].bytecode
+var abi = JSON.parse(compiled.contracts[':Oracle'].interface)
+var oracleContract = web3.eth.contract(abi)
+var abi = JSON.parse(compiled.contracts[':Payment'].interface)
+var paymentContract = web3.eth.contract(abi)
+
+balance(account1) ; 
+balance(account2);
+
+var odeployed = oracleContract.new({from: account1, data: obytecode, gas: 4700000, gasPrice: 5}, (error, contract) => {})
+var oracle = odeployed.address;
+odeployed.StoreDocument(1234,5,{from: account1, data: obytecode, gas: 4700000, gasPrice: 5}, (error, contract) => {})
+var pdeployed = paymentContract.new(account2,oracle,{from: account1, data: pbytecode, gas: 4700000, gasPrice: 5, value: web3.toWei(10,'ether')}, (error, contract) => {})
+pdeployed.oracleID.call()
+pdeployed.margin.call()
+balance(account1) ; 
+balance(account2); 
+balance(pdeployed.address);
+pdeployed.margin.call()
+pdeployed.oracleID.call()
+pdeployed.RetrieveData(1234,{from: account2, data: pbytecode, gas: 4700000, gasPrice: 5}, (error, contract) => {})
+pdeployed.Pay("1234",{from: account2, data: pbytecode, gas: 4700000, gasPrice: 5}, (error, contract) => {})
+
+balance(account1) ; 
+balance(account2); 
+balance(pdeployed.address);
+
