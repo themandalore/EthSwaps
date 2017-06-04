@@ -21,9 +21,28 @@ contract Oracle{
      }
       function RetrieveName(bytes32 key) public constant returns(bytes32) {
         var d = documentStructs[key].name;
-        Print(d,"00");
+        var e = bytes32ToString(d);
+        var  x = 0;
+        Print(e,x);
         return d;
      }
+     
+     function bytes32ToString(bytes32 x) constant returns (string) {
+    bytes memory bytesString = new bytes(32);
+    uint charCount = 0;
+    for (uint j = 0; j < 32; j++) {
+        byte char = byte(bytes32(uint(x) * 2 ** (8 * j)));
+        if (char != 0) {
+            bytesString[charCount] = char;
+            charCount++;
+        }
+    }
+    bytes memory bytesStringTrimmed = new bytes(charCount);
+    for (j = 0; j < charCount; j++) {
+        bytesStringTrimmed[j] = bytesString[j];
+    }
+    return string(bytesStringTrimmed);
+}
 }
 
 contract Swap {
@@ -155,12 +174,12 @@ Oracle d;
 
   function RetrieveData(bytes32 key) public constant returns(uint) {
     DocumentStruct memory doc;
-    doc.value = d.documentStructs(key);
+    (doc.name,doc.value) = d.documentStructs(key);
     return doc.value;
   }
     function RetrieveName(bytes32 key) public constant returns(bytes32) {
     DocumentStruct memory doc;
-    doc.name = d.documentStructs(key);
+    (doc.name,doc.value) = d.documentStructs(key);
     return doc.name;
   }
 
