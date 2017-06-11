@@ -1,5 +1,32 @@
 pragma solidity ^0.4.11;
 
+
+contract Factory {
+    address[] public newContracts;
+    address public creator;
+    address public oracleID;
+    string public oracleName;
+    modifier onlyOwner{if (msg.sender != creator){throw;}else{_;}}
+
+    function Factory (string _oracleName, address _oracleID){
+        creator = msg.sender;  
+        oracleName = _oracleName;
+        oracleID = _oracleID;
+    }
+
+    function createContract (bytes32 name, uint _feemargin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate,bool _cancellable) returns (address){
+        if (msg.value < _feemargin * 1000000000000000000){throw;}
+        var _margin = _feemargin * 9975/10000 ;
+        address newContract = new Swap(creator,oracleID,oracleName,_margin,_margin2,_notional,_long,_startDate,_endDate,_cancellable);
+        newContracts.push(newContract);
+        newContract.send(_margin);
+        return newContract;
+    } 
+    function withdrawFee() onlyOwner {
+        creator.send(this.balance);
+    }
+}
+
 contract Oracle{
     address private owner;
     event Print(string _name, uint _value);
@@ -50,7 +77,7 @@ contract Oracle{
 }
 
 contract Swap {
-  enum SwapState {available,open,started,ended}
+  enum SwapState {open,started,ended}
   SwapState public currentState;
   address public counterparty1;
   address public counterparty2;
@@ -73,45 +100,18 @@ contract Swap {
 modifier onlyState(SwapState expectedState) { if (expectedState == currentState) {_;} else {throw; } }
 modifier onlyCreator{if (msg.sender != creator){throw;}else{_;}}
 
-function Swap(address OAddress, bytes32 oname){
-    d = Oracle(OAddress);
-    oracleID = OAddress;
-    oracleName = oname;
-    creator = msg.sender;
-    currentState = SwapState.available;
-    cancel = 0;
-}
 
-function Exit(){
-   if (currentState == SwapState.available){
-    if (msg.sender == creator) selfdestruct(creator);
-    }
-  else if (currentState == SwapState.open){
-    if (msg.sender == counterparty1) selfdestruct(counterparty1);
-  }
-
-  else if (currentState == SwapState.started){
-      if (!cancellable){throw;}
-    var c = msg.sender == counterparty1 ? 1 : 0;
-    var d = msg.sender == counterparty2 ? 2 : 0;
-    var e = cancel + c + d;
-    if (e > 2){
-      counterparty1.send(margin1);
-      counterparty2.send(margin2);
-      selfdestruct(creator);
-    }else {
-      cancel = c +d;
-    }
-  }
-  else if (currentState == SwapState.ended){throw;}
-
-}
 
 Oracle d;
 
-  function CreateSwap(uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate,bool _cancellable) onlyState(SwapState.available) payable returns (bool) {
-    cancellable = _cancellable;
-      margin1 = msg.value;
+  function Swap(address _creator,address OAddress, bytes32 oname, uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate,bool _cancellable) payable {
+      d = Oracle(OAddress);
+      oracleID = OAddress;
+      oracleName = oname;
+      creator = _creator;
+      cancel = 0;
+      cancellable = _cancellable;
+      margin1 = _margin*1000000000000000000;
       margin2 = _margin2 *1000000000000000000;
       counterparty1 = msg.sender;
       notional = _notional;
@@ -122,14 +122,13 @@ Oracle d;
       Print('Margin- ',margin1);
       log0("Testing Log");
       //Validators:
-      if (margin1 != _margin * 1000000000000000000){throw;}
       if (notional < _margin){throw;}
       if (endDate < _startDate){throw;}
-      return true;
   }
 
   function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
       if(msg.value == margin2) {
+          if (this.balance < margin1) {throw;}
           counterparty2 = msg.sender;
           currentState = SwapState.started;
           return true;
@@ -178,6 +177,27 @@ Oracle d;
     Print("C2 Change -",d2-c2);
     return true;
   }
+  function Exit(){
+     if (currentState == SwapState.open){
+    if (msg.sender == counterparty1) selfdestruct(counterparty1);
+  }
+
+  else if (currentState == SwapState.started){
+      if (!cancellable){throw;}
+    var c = msg.sender == counterparty1 ? 1 : 0;
+    var d = msg.sender == counterparty2 ? 2 : 0;
+    var e = cancel + c + d;
+    if (e > 2){
+      counterparty1.send(margin1);
+      counterparty2.send(margin2);
+      selfdestruct(creator);
+    }else {
+      cancel = c +d;
+    }
+  }
+  else if (currentState == SwapState.ended){throw;}
+
+}
 
 
   struct DocumentStruct{bytes32 name; uint value;}
@@ -198,10 +218,8 @@ Oracle d;
 
 /*Tests:
 Remix:
-1234,"BTCUSD",1000  -  1235, "BTCUSD",950  -  100,100,1000,true,1234,1235,false
 
 TestRPC
-1234,"BTCUSD",1000  -  1235, "BTCUSD",1050  -  10,10,100,true,1234,1235,false
 
 Truffle 
 
