@@ -1,0 +1,15 @@
+· Oracle.StoreDocument (key,name,value) - e.g. (20170614,"BTCUSD",1000)
+· Store enddate value -- Oracle.StoreDocument (key,name,value) - e.g. (20170617,"BTCUSD",1050)  
+· Create Factory (oracleName, oracleAddress) - use oracle address from created oracle above and name you stored.  e.g. "BTCUSD","0xcca417069d356fcf870f4fe05b7d95bf700de960"
+· Now switch accounts to a mock user and  make value .01 
+· Click Factory.CreateContract
+· Now remove value
+· Create Swap.at address and enter the newly created Swap contract (e.g. 0x35d6a51eee77422820dcc7c51ab9148899a24daf  ) (note no quotation)
+· enter mock margin value (e.g. 100)
+· Factory.createContract (margin,margin2,notional,long,startDate,endDate,cancellable) - (e.g. 100, 100, 1000, true, 20170614, 20170617,false )
+· Now switch accounts to entering party (non party 1/ creator)
+· Create Swap at address (address created from factory.createContract) (e.g.   0x54657374696e67204c6f67 ) (note no quotation)
+· Enter margin value of margin 2 (e.g. 100) and click EnterSwap
+· Remove value, pretend like you can fast forward time and click payswap
+· Change to counterparty1 and click payswap
+
