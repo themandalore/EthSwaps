@@ -93,7 +93,6 @@ contract Swap {
   bytes32 public startDate;
   bytes32 public endDate;
   address public creator;
-  bool public cancellable;
   uint public cancel;
 
 
@@ -116,14 +115,12 @@ Oracle d;
     
   }
   
-  function CreateSwap(uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate,bool _cancellable) payable {
+  function CreateSwap(uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) payable {
       if(msg.sender != counterparty1){throw;}
-      margin1 = _margin*1000000000000000000;
-      if(msg.value != margin1){throw;}
+      if(msg.value != _margin*1000000000000000000){throw;}
       cancel = 0;
-      cancellable = _cancellable;
-      margin1 = _margin*1000000000000000000;
-      margin2 = _margin2 *1000000000000000000;
+      margin1 = _margin;
+      margin2 = _margin2;
       notional = _notional;
       long = _long;
       currentState = SwapState.open;
@@ -137,14 +134,18 @@ Oracle d;
   }
 
   function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
-      if(msg.value == margin2) {
+      if(msg.value == margin2 *1000000000000000000) {
           if (this.balance < margin1) {throw;}
           counterparty2 = msg.sender;
           currentState = SwapState.started;
           return true;
       } else {throw;}
   }
+  
 
+
+        
+  mapping(uint => uint) shares;
   function PaySwap() onlyState(SwapState.started) returns (bool){
     Print("Counterparty1 Balance - ", counterparty1.balance);
     Print("Counterparty2 Balance - ", counterparty2.balance);
@@ -153,16 +154,19 @@ Oracle d;
     var c3 = this.balance;
     Print("Contract Balance - ", this.balance);
 
-      var startValue = RetrieveData(startDate);
-      var endValue = RetrieveData(endDate);
+      uint startValue = RetrieveData(startDate);
+      uint endValue = RetrieveData(endDate);
     Print("Endvalue - ", endValue);
-     /*works up to here*/
-      var change = ((notional*(endValue - startValue)) / startValue) * 1000000000000000000; //convert wei to ETH
-      var lmargin = long ? margin1 : margin2;
-      var smargin = long ? margin2 : margin1;
-      var lvalue = smargin - change < 0 ? (this.balance) : (lmargin + change);
-      var svalue = lmargin + change < 0 ? (this.balance) : (smargin - change);
-    Print ("Change - ", change);
+      uint lmargin = long ? margin1 : margin2;
+      uint smargin = long ? margin2 : margin1;
+      Print('Test',100*endValue/startValue);
+      Print('Test2',100*smargin/notional);
+      if (100*endValue/startValue - 100*smargin/notional  >= 100){shares[1] = this.balance; shares[2] = 0;}
+      else if (100*endValue/startValue + 100*lmargin/notional  <= 100){shares[1] = 0; shares[2] =this.balance;}
+      else {shares[1] = (1000000000000000000*lmargin * endValue) /  startValue;shares[2] = (1000000000000000000*smargin * endValue) /  startValue;}
+     uint lvalue = shares[1] ;
+     uint svalue = shares[2];
+    Print ("Change - ", 100*endValue / startValue);
     Print("Lvalue - ", lvalue);
     Print("Svalue - ", svalue);
       //Validators:
@@ -190,7 +194,6 @@ Oracle d;
   }
 
   else if (currentState == SwapState.started){
-      if (!cancellable){throw;}
     var c = msg.sender == counterparty1 ? 1 : 0;
     var d = msg.sender == counterparty2 ? 2 : 0;
     var e = cancel + c + d;
@@ -225,6 +228,7 @@ Oracle d;
 
 /*Tests:
 Remix:
+100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
 
 TestRPC
 
@@ -233,5 +237,12 @@ Truffle
 Testnet
 
 Mainnet
+
+
+To test: 
+all exit scenarios
+Negative Gain
+Zero out pos / neg gains
+Errors -- big numbers, non oracle values, all margin values, enormous notionals
 
 */

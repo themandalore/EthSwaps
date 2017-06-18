@@ -51,8 +51,6 @@ contract Oracle{
       function RetrieveName(bytes32 key) public constant returns(string) {
         var d = documentStructs[key].name;
         var e = bytes32ToString(d);
-        var  x = 0;
-        Print(e,x);
         return e;
      }
      
@@ -88,7 +86,6 @@ contract Swap {
   bytes32 public startDate;
   bytes32 public endDate;
   address public creator;
-  bool public cancellable;
   uint public cancel;
 
 
@@ -111,14 +108,12 @@ Oracle d;
     
   }
   
-  function CreateSwap(uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate,bool _cancellable) payable {
+  function CreateSwap(uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) payable {
       if(msg.sender != counterparty1){throw;}
-      margin1 = _margin*1000000000000000000;
-      if(msg.value != margin1){throw;}
+      if(msg.value != _margin*1000000000000000000){throw;}
       cancel = 0;
-      cancellable = _cancellable;
-      margin1 = _margin*1000000000000000000;
-      margin2 = _margin2 *1000000000000000000;
+      margin1 = _margin;
+      margin2 = _margin2;
       notional = _notional;
       long = _long;
       currentState = SwapState.open;
@@ -130,34 +125,42 @@ Oracle d;
   }
 
   function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
-      if(msg.value == margin2) {
+      if(msg.value == margin2 *1000000000000000000) {
           if (this.balance < margin1) {throw;}
           counterparty2 = msg.sender;
           currentState = SwapState.started;
           return true;
       } else {throw;}
   }
+  
 
+
+        
+  mapping(uint => uint) shares;
   function PaySwap() onlyState(SwapState.started) returns (bool){
     var c1 = counterparty1.balance;
     var c2 = counterparty2.balance;
     var c3 = this.balance;
-      var startValue = RetrieveData(startDate);
-      var endValue = RetrieveData(endDate);
-     /*works up to here*/
-      var change = ((notional*(endValue - startValue)) / startValue) * 1000000000000000000; //convert wei to ETH
-      var lmargin = long ? margin1 : margin2;
-      var smargin = long ? margin2 : margin1;
-      var lvalue = smargin - change < 0 ? (this.balance) : (lmargin + change);
-      var svalue = lmargin + change < 0 ? (this.balance) : (smargin - change);
+      uint startValue = RetrieveData(startDate);
+      uint endValue = RetrieveData(endDate);
+
+      uint lmargin = long ? margin1 : margin2;
+      uint smargin = long ? margin2 : margin1;
+
+      if (100*endValue/startValue - 100*smargin/notional  >= 100){shares[1] = this.balance; shares[2] = 0;}
+      else if (100*endValue/startValue + 100*lmargin/notional  <= 100){shares[1] = 0; shares[2] =this.balance;}
+      else {shares[1] = (1000000000000000000*lmargin * endValue) /  startValue;shares[2] = (1000000000000000000*smargin * endValue) /  startValue;}
+     uint lvalue = shares[1] ;
+     uint svalue = shares[2];
       //Validators:
     if (msg.sender == counterparty1 && counterparty1 != creator){
-        if (long && lvalue > 0 ){counterparty1.send(lvalue); if (this.balance == c3 - lvalue){counterparty1 = creator;}}
+        Print('Good1',lvalue);
+        if (long && lvalue > 0 ){Print('GoodLvalue',lvalue); counterparty1.send(lvalue); if (this.balance == c3 - lvalue){counterparty1 = creator; Print('GoodLong',lvalue);}}
         else if (!long && svalue > 0){counterparty1.send(svalue); if (this.balance == c3 - svalue){counterparty1 = creator;}}
     }
     else if (msg.sender == counterparty2 && counterparty2 != creator){
         if(!long && lvalue > 0 ){counterparty2.send(lvalue); if (this.balance == c3 - lvalue){counterparty2 = creator;}}
-        else if (long && svalue > 0){counterparty2.send(svalue); if (this.balance == c3 - svalue){counterparty2 = creator; }}
+        else if (long && svalue > 0){ counterparty2.send(svalue); if (this.balance == c3 - svalue){counterparty2 = creator;  Print('Good3s',svalue);}}
     }
      if (this.balance ==0){currentState = SwapState.ended;}
     return true;
@@ -168,7 +171,6 @@ Oracle d;
   }
 
   else if (currentState == SwapState.started){
-      if (!cancellable){throw;}
     var c = msg.sender == counterparty1 ? 1 : 0;
     var d = msg.sender == counterparty2 ? 2 : 0;
     var e = cancel + c + d;
@@ -203,6 +205,7 @@ Oracle d;
 
 /*Tests:
 Remix:
+100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
 
 TestRPC
 
@@ -211,5 +214,12 @@ Truffle
 Testnet
 
 Mainnet
+
+
+To test: 
+all exit scenarios
+Negative Gain
+Zero out pos / neg gains
+Errors -- big numbers, non oracle values, all margin values, enormous notionals
 
 */
