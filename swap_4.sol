@@ -23,13 +23,12 @@ contract Factory {
         return newContract;
     } 
     function withdrawFee() onlyOwner {
-        creator.send(this.balance);
+        creator.transfer(this.balance);
     }
 }
 
 contract Oracle{
     address private owner;
-    event Print(string _name, uint _value);
     modifier onlyOwner{if (msg.sender != owner){throw;}else{_;}}
     struct DocumentStruct{bytes32 name; uint value;}
     mapping(bytes32 => DocumentStruct) public documentStructs;
@@ -45,16 +44,15 @@ contract Oracle{
 
     function RetrieveData(bytes32 key) public constant returns(uint) {
         var d = documentStructs[key].value;
-        Print('data',d);
         return d;
-     }
+    }
       function RetrieveName(bytes32 key) public constant returns(string) {
         var d = documentStructs[key].name;
         var e = bytes32ToString(d);
         return e;
-     }
-     
-     function bytes32ToString(bytes32 x) constant returns (string) {
+    }
+    
+    function bytes32ToString(bytes32 x) constant returns (string) {
     bytes memory bytesString = new bytes(32);
     uint charCount = 0;
     for (uint j = 0; j < 32; j++) {
@@ -119,16 +117,17 @@ Oracle d;
       currentState = SwapState.open;
       endDate = _endDate;
       startDate = _startDate;
-      //Validators:
       if (notional < _margin){throw;}
       if (endDate < _startDate){throw;}
   }
-
+  mapping(address => bool) paid;
   function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
       if(msg.value == margin2 *1000000000000000000) {
           if (this.balance < margin1) {throw;}
           counterparty2 = msg.sender;
           currentState = SwapState.started;
+          paid[counterparty1] = false;
+          paid[counterparty2] = false;
           return true;
       } else {throw;}
   }
@@ -137,46 +136,44 @@ Oracle d;
 
         
   mapping(uint => uint) shares;
+
+  
   function PaySwap() onlyState(SwapState.started) returns (bool){
-    var c1 = counterparty1.balance;
-    var c2 = counterparty2.balance;
-    var c3 = this.balance;
       uint startValue = RetrieveData(startDate);
       uint endValue = RetrieveData(endDate);
-
       uint lmargin = long ? margin1 : margin2;
       uint smargin = long ? margin2 : margin1;
-
       if (100*endValue/startValue - 100*smargin/notional  >= 100){shares[1] = this.balance; shares[2] = 0;}
       else if (100*endValue/startValue + 100*lmargin/notional  <= 100){shares[1] = 0; shares[2] =this.balance;}
-      else {shares[1] = (1000000000000000000*lmargin * endValue) /  startValue;shares[2] = (1000000000000000000*smargin * endValue) /  startValue;}
-     uint lvalue = shares[1] ;
-     uint svalue = shares[2];
+      else {shares[2] = (1000000000000000000*smargin * (200-(100*endValue /startValue))/100);shares[1] = (1000000000000000000*lmargin * endValue) /  startValue;}
+    uint lvalue = shares[1];
+    uint svalue = shares[2];
       //Validators:
-    if (msg.sender == counterparty1 && counterparty1 != creator){
-        Print('Good1',lvalue);
-        if (long && lvalue > 0 ){Print('GoodLvalue',lvalue); counterparty1.send(lvalue); if (this.balance == c3 - lvalue){counterparty1 = creator; Print('GoodLong',lvalue);}}
-        else if (!long && svalue > 0){counterparty1.send(svalue); if (this.balance == c3 - svalue){counterparty1 = creator;}}
+      var endName = RetrieveName(endDate);
+      if(endName != oracleName){throw;}
+    if (msg.sender == counterparty1 && paid[counterparty1] == false){
+        if (long && lvalue > 0 ){counterparty1.transfer(lvalue);paid[counterparty1] = true;}
+        else if (!long && svalue > 0){counterparty1.transfer(svalue); paid[counterparty1] = true;}
     }
-    else if (msg.sender == counterparty2 && counterparty2 != creator){
-        if(!long && lvalue > 0 ){counterparty2.send(lvalue); if (this.balance == c3 - lvalue){counterparty2 = creator;}}
-        else if (long && svalue > 0){ counterparty2.send(svalue); if (this.balance == c3 - svalue){counterparty2 = creator;  Print('Good3s',svalue);}}
+    else if (msg.sender == counterparty2 && paid[counterparty2] == false){
+        if(!long && lvalue > 0 ){counterparty2.transfer(lvalue);paid[counterparty2] = true;}
+        else if (long && svalue > 0){ counterparty2.transfer(svalue); paid[counterparty2] = true;}
     }
-     if (this.balance ==0){currentState = SwapState.ended;}
+    if (this.balance == margin1 + margin2 - lvalue - svalue){currentState = SwapState.ended;}
     return true;
   }
   function Exit(){
-     if (currentState == SwapState.open){
+    if (currentState == SwapState.open){
     if (msg.sender == counterparty1) selfdestruct(counterparty1);
-  }
+    }
 
   else if (currentState == SwapState.started){
     var c = msg.sender == counterparty1 ? 1 : 0;
     var d = msg.sender == counterparty2 ? 2 : 0;
     var e = cancel + c + d;
     if (e > 2){
-      counterparty1.send(margin1);
-      counterparty2.send(margin2);
+      counterparty1.transfer(margin1);
+      counterparty2.transfer(margin2);
       selfdestruct(creator);
     }else {
       cancel = c +d;
