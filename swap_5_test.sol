@@ -115,7 +115,8 @@ Oracle d;
     
   }
   
-  function CreateSwap(uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) payable {
+  function CreateSwap(bool ECP, uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) payable {
+      if(!ECP){throw;}
       if(msg.sender != counterparty1){throw;}
       if(msg.value != mul(_margin,1000000000000000000)){throw;}
       cancel = 0;
@@ -133,7 +134,8 @@ Oracle d;
       if (endDate < _startDate){throw;}
   }
   mapping(address => bool) paid;
-  function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
+  function EnterSwap(bool ECP) onlyState(SwapState.open) payable returns (bool) {
+      if(!ECP){throw;}
       if(msg.value == mul(margin2,1000000000000000000)) {
           if (this.balance < margin1) {throw;}
           counterparty2 = msg.sender;
@@ -162,11 +164,11 @@ Oracle d;
       uint p1=div(mul(100,endValue),startValue);
       uint p2=div(mul(100,smargin),notional);
       uint p3=div(mul(100,lmargin),notional);
-      if (sub(p1,p2) >= 100){shares[1] = this.balance; shares[2] = 0;}
-      else if (add(p3,p1)  <= 100){shares[1] = 0; shares[2] =this.balance;}
+      if (sub(p1,p2) >= 100){shares[1] = div(this.balance,1000000000000000000); shares[2] = 0;}
+      else if (add(p3,p1)  <= 100){shares[1] = 0; shares[2] =div(this.balance,1000000000000000000);}
       else {shares[2] = div(mul(smargin,sub(200,p1)),100);shares[1] = div(mul(lmargin,p1),100);}
-    uint lvalue = mul(shares[1],1000000000000000000);
-    uint svalue = mul(shares[2],1000000000000000000);
+    uint lvalue = mul(shares,1000000000000000000);
+    uint svalue =mul(shares[2],1000000000000000000);
     Print ("Change - ", div(mul(100,endValue),startValue));
     Print("Lvalue - ", lvalue);
     Print("Svalue - ", svalue);
@@ -198,12 +200,19 @@ Oracle d;
     var c = msg.sender == counterparty1 ? 1 : 0;
     var d = msg.sender == counterparty2 ? 2 : 0;
     var e = cancel + c + d;
+    cancel = c + d;
     if (e > 2){
-      counterparty1.transfer(margin1);
-      counterparty2.transfer(margin2);
-      selfdestruct(creator);
-    }else {
-      cancel = c +d;
+      if (msg.sender == counterparty1){ 
+        counterparty2.transfer(margin1);
+        counterparty1.transfer(margin2);
+        selfdestruct(counterparty1);
+      }
+      if (msg.sender == counterparty2){ 
+        counterparty1.transfer(margin1);
+        counterparty2.transfer(margin2);
+        selfdestruct(counterparty1);
+      }
+
     }
   }
   else if (currentState == SwapState.ended){throw;}
