@@ -37,35 +37,58 @@ contract Oracle{
 }
 }
 '''
-true = True
-false = False
-abi='[{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"documentStructs","outputs":[{"name":"name","type":"bytes32"},{"name":"value","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"x","type":"bytes32"}],"name":"bytes32ToString","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"key","type":"bytes32"},{"name":"name","type":"bytes32"},{"name":"value","type":"uint256"}],"name":"StoreDocument","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"inputs":[],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"_name","type":"string"},{"indexed":false,"name":"_value","type":"uint256"}],"name":"Print","type":"event"}]'
-contractAddress = '0x03e127e882c49a55b70275ba0c94c50c268b1183'
+
+'''This is a contract on Ropsten with 2 contracts deployed
+0x16c73e20ba46a20ecd6a78b5040d49b2358c5366
+0xd812626afd1c5a38f7428b23d8142d9e87bf544b
+'''
 
 from web3 import Web3
 import json
 from web3.providers.rpc import HTTPProvider
-
-
-
+contractAddress = '0x3c7bec02bd4fa73dce24413d2a13c02e1a91e858'
 web3 = Web3(HTTPProvider('https://ropsten.infura.io'))
-
-abi1 = json.loads(abi)
+with open('factory.json', 'r') as abi_definition:
+    abi = json.load(abi_definition)
 print (web3.eth.blockNumber)
-bytecode = web3.eth.getCode(contractAddress)
-print (bytecode)
-oContract = web3.eth.contract(abi1)
-print (oContract)
-oCI = oContract.at(contractAddress)
-oCI.
 
 #abi is swap API created from factory
-sContract = web3.eth.contract(abi);
+fContract = web3.eth.contract(abi,contractAddress)
+print (fContract.abi)
+print ('Creator',fContract.call().creator)
+print ('Contracts',fContract.call().newContracts)
+var1 = fContract.call()._oracleName
+var2 = fContract.call().oracleName
 
-def getSwaps(state,number,factory)
+print()
+print ('var1',var1)
+print()
+print ('var2',var2)
+print()
+print ('OracleName',fContract.call())
+
+wei_balance = web3.eth.getBalance(contractAddress)
+print(wei_balance)
+
+print(fContract.call().oracleID)
+print(fContract.call()._creator)
+print(fContract.call().newContracts)
+
+'''
+print (fContract)
+fInstance = fContract.at([contractAddress])
+fInstance.call().newContracts()'''
+
+
+
+
+def getSwaps(state,number,factory):
 	#get list of contracts created from factory and loop through
+	with open('SwapsList.csv','a') as fd:
+		writer = csv.writer(fd)
+		writer.writerow(['currentState','counterparty1','counterparty2','notional','s_long','margin1','margin2','oracleID','oracleName','startDate','endDate','creator','cancellable','cancel'])
 	for i in factory:
-		sCI = sContract.at(saddress);
+		'''sCI = sContract.at(saddress);
 		print (sCI.currentState.call())
 		if sCI.currentState.call() = state:
 			currentState = sCI.currentState.call()
@@ -82,10 +105,27 @@ def getSwaps(state,number,factory)
 			creator = sCI.creator.call()
 			cancellable = sCI.cancellable.call()
 			cancel = sCI.cancel.call()
+			with open('SwapsList.csv','a') as fd:
+				writer = csv.writer(fd)
+				writer.writerow([str(currentState)
+					,str(counterparty1)
+					,str(counterparty2)
+					,str(notional)
+					,str(s_long)
+					,str(margin1)
+					,str(margin2)
+					,str(oracleID)
+					,str(oracleName)
+					,str(startDate)
+					,str(endDate)
+					,str(creator)
+					,str(cancellable)
+					,str(cancel)])
+				
 
 
 			#make array and append it to file.  
-			#create dataframe?  of all open contracts
+			#create dataframe?  of all open contracts'''
 
 
 '''Have a contract to create new swaps'''

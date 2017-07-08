@@ -30,31 +30,38 @@ contract Factory {
     }
 }
 
-contract Oracle{
+import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
+
+contract Oracle is usingOraclize{
+  /* store start and end values, uses swap contract address to retrieve */
     address private owner;
+    bytes32 public url;
     event Print(string _name, uint _value);
     modifier onlyOwner{if (msg.sender != owner){throw;}else{_;}}
-    struct DocumentStruct{bytes32 name; uint value;}
+    struct DocumentStruct{bytes32 name; uint svalue; uint evalue}
     mapping(bytes32 => DocumentStruct) public documentStructs;
     
-    function Oracle(){
+    function Oracle(string _url){
         owner = msg.sender;
+        /*"json(https://api.gdax.com/products/BTC-USD/ticker).last"*/
+        url = _url;
         var  zz = 0;
         Print('Success',zz);
     }
-    function StoreDocument(bytes32 key,bytes32 name, uint value) onlyOwner returns (bool success) {
-        documentStructs[key].value = value;
-        documentStructs[key].name = name;
+    function StoreDocument(uint _duration) returns (bool success) {
+        documentStructs[msg.sender].svalue = oraclize_query("URL",url);
+        documentStructs[msg.sender].evalue = oraclize_query(_duration,"URL",url);
+        documentStructs[msg.sender].name = url;
         return true;
     }
 
-    function RetrieveData(bytes32 key) public constant returns(uint) {
-        var d = documentStructs[key].value;
+    function RetrieveData() public constant returns(uint) {
+        var d = documentStructs[msg.sender].value;
         Print('data',d);
         return d;
     }
-      function RetrieveName(bytes32 key) public constant returns(string) {
-        var d = documentStructs[key].name;
+      function RetrieveName() public constant returns(string) {
+        var d = documentStructs[msg.sender].name;
         var e = bytes32ToString(d);
         var  x = 0;
         Print(e,x);
@@ -90,8 +97,9 @@ contract Swap {
   uint public margin2;
   address public oracleID;
   bytes32 public oracleName;
-  bytes32 public startDate;
-  bytes32 public endDate;
+  uint public startDate;
+  uint public duration;\
+  uint public startVal;
   address public creator;
   uint public cancel;
 
@@ -125,7 +133,7 @@ Oracle d;
       notional = _notional;
       long = _long;
       currentState = SwapState.open;
-      endDate = _endDate;
+      duration = _endDate;
       startDate = _startDate;
       Print('Margin- ',margin1);
       log0("Testing Log");
@@ -287,16 +295,7 @@ Oracle d;
 
 /*Tests:
 Remix:
-    true, 100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
-    true,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",950
-    true,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1200
-    true,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",800
-    exit1 - true,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",800
-    false,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",500
-    exit 2 then 1 - true,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",500
-    exit 1 then 2 - true,100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",500
-    withdraw fee
-    
+100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
 
 TestRPC
 
