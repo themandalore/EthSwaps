@@ -1,0 +1,50 @@
+From putty:
+Host name:
+ec2-user@ec2-52-42-139-211.us-west-2.compute.amazonaws.com 
+
+Then in SSH/Auth click browse and link to EthDevops.ppk
+click connect, then once open, right click top box and click new session 
+click new session again (one node, one testrpc, one base terminal)
+
+20170518,"BTCUSD"1000
+20170519,"BTCUSD",900
+
+From base:
+testrpc
+
+// Make a new folder
+// Create pacakge.json file
+{
+  "dependencies": {
+    "web3": "0.17.0-alpha",
+    "solc": "^0.4.4"
+  }
+}
+
+// Install dependencies (need to be inside the same folder as package.json)
+npm install
+
+// Run node console (need to be inside the same folder as package.json)
+node
+
+// INSIDE NODE CONSOLE
+
+
+var Web3 = require("web3")
+var solc = require("solc")
+var web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io"))
+web3.eth.accounts
+
+
+var abi = [{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"createContract","outputs":[{"name":"","type":"address"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"oracleName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"newContracts","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"withdrawFee","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"inputs":[{"name":"_oracleName","type":"bytes32"},{"name":"_oracleID","type":"address"}],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"_name","type":"address"},{"indexed":false,"name":"_value","type":"address"}],"name":"Print","type":"event"}]
+var fContract = web3.eth.contract(abi)
+var fContractInstance = fContract.at('0x3c7bec02bd4fa73dce24413d2a13c02e1a91e858')
+
+deployed.EnterSwap({from: account2, data: bytecode, gas: 4700000, gasPrice: 5, value: web3.toWei(10,'ether')}, (error, contract) => {})
+fContractInstance.oracleName.call()
+fContractInstance.newContracts.call()
+fContractInstance.oracleID.call()
+fContractInstance.creator.call()
+
+
+var events = fContractInstance.allEvents({fromBlock: 0, toBlock: 'latest'});

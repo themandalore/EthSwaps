@@ -1,22 +1,27 @@
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 
 contract Factory {
     address[] public newContracts;
     address public creator;
-    modifier onlyOwner{if (msg.sender != creator){throw;}else{_;}}
+    address public oracleID;
+    bytes32 public oracleName;
+    modifier onlyOwner{require(msg.sender == creator); _;}
     event Print(address _name, address _value);
     event Print2(uint _name);
 
-    function Factory (){
+    function Factory (bytes32 _oracleName, address _oracleID){
         creator = msg.sender;  
+        oracleName = _oracleName;
+        oracleID = _oracleID;
     }
 
     function createContract () payable returns (address){
-        if (msg.value < .01 * 1000000000000000000){throw;}
+        require(msg.value >= .01 * 1000000000000000000);
         Print2(this.balance);
-        address newContract = new Swap(msg.sender,creator);
+        address newContract = new Swap(oracleID,oracleName,msg.sender,creator);
         newContracts.push(newContract);
+        Print(oracleID,newContract);
         Print2(this.balance);
         return newContract;
     } 
@@ -25,10 +30,56 @@ contract Factory {
     }
 }
 
-import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
+contract Oracle{
+    address private owner;
+    event Print(string _name, uint _value);
+    modifier onlyOwner{require(msg.sender == owner);_;}
+    struct DocumentStruct{bytes32 name; uint value;}
+    mapping(bytes32 => DocumentStruct) public documentStructs;
+    
+    function Oracle(){
+        owner = msg.sender;
+        uint  zz = 0;
+        Print('Success',zz);
+    }
+    function StoreDocument(bytes32 key,bytes32 name, uint value) onlyOwner returns (bool success) {
+        documentStructs[key].value = value;
+        documentStructs[key].name = name;
+        return true;
+    }
 
-contract Swap is usingOraclize{
-  enum SwapState {open,entered,started,validated,ended}
+    function RetrieveData(bytes32 key) public constant returns(uint) {
+        var d = documentStructs[key].value;
+        Print('data',d);
+        return d;
+    }
+      function RetrieveName(bytes32 key) public constant returns(string) {
+        bytes32 d = documentStructs[key].name;
+        uint  x = 0;
+        Print(bytes32ToString(d),x);
+        return bytes32ToString(d);
+    }
+    
+    function bytes32ToString(bytes32 x) constant returns (string) {
+    bytes memory bytesString = new bytes(32);
+    uint charCount = 0;
+    for (uint j = 0; j < 32; j++) {
+        byte char = byte(bytes32(uint(x) * 2 ** (8 * j)));
+        if (char != 0) {
+            bytesString[charCount] = char;
+            charCount++;
+        }
+    }
+    bytes memory bytesStringTrimmed = new bytes(charCount);
+    for (j = 0; j < charCount; j++) {
+        bytesStringTrimmed[j] = bytesString[j];
+    }
+    return string(bytesStringTrimmed);
+}
+}
+
+contract Swap {
+  enum SwapState {open,started,ended}
   SwapState public currentState;
   address public counterparty1;
   address public counterparty2;
@@ -36,12 +87,10 @@ contract Swap is usingOraclize{
   bool public long;
   uint public margin1;
   uint public margin2;
-  string public url;
-  uint public duration;
-  uint public startValue;
-  uint public endValue;
-  bytes32 s_id;
-  bytes32 e_id;
+  address public oracleID;
+  bytes32 public oracleName;
+  bytes32 public startDate;
+  bytes32 public endDate;
   address public creator;
   uint public cancel;
 
@@ -49,70 +98,61 @@ contract Swap is usingOraclize{
   event Print(string _name, uint _value);
     mapping(address => uint256) balances;
 
-modifier onlyState(SwapState expectedState) { if (expectedState == currentState) {_;} else {throw; } }
+modifier onlyState(SwapState expectedState) {require(expectedState == currentState);_;}
 
-  function Swap(address _cpty1, address _creator){
+Oracle d;
+
+  function Swap(address OAddress, bytes32 oname,address _cpty1, address _creator){
+      d = Oracle(OAddress);
+      oracleID = OAddress;
+      oracleName = oname;
       creator = _creator;
       counterparty1 = _cpty1;
     
   }
-
- 
-  function CreateSwap(string _url, uint _duration, uint _margin, uint _margin2, uint _notional, bool _long) payable {
-      if(msg.sender != counterparty1){throw;}
-      if(msg.value != mul(_margin,1000000000000000000)){throw;}
-      url = _url;
+  
+  function CreateSwap(bool ECP, uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) payable {
+      require(ECP);
+      require (msg.sender == counterparty1);
+      require(msg.value == mul(_margin,1000000000000000000));
       cancel = 0;
       margin1 = _margin;
       margin2 = _margin2;
       notional = _notional;
       long = _long;
       currentState = SwapState.open;
-      duration = _duration;
+      endDate = _endDate;
+      startDate = _startDate;
       Print('Margin- ',margin1);
       log0("Testing Log");
       //Validators:
-      if (notional < _margin){throw;}
+      require(notional >= _margin);
+      require(endDate >= _startDate);
   }
   mapping(address => bool) paid;
-  function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
-      if(msg.value == mul(margin2,1000000000000000000)) {
-          if (this.balance < margin1) {throw;}
-          counterparty2 = msg.sender;
-          currentState = SwapState.entered;
-          paid[counterparty1] = false;
-          paid[counterparty2] = false;
-          s_id = oraclize_query("URL",url);
-          e_id = oraclize_query(duration,"URL",url);
-          return true;
-      } else {throw;}
+  function EnterSwap(bool ECP) onlyState(SwapState.open) payable returns (bool) {
+      require(ECP);
+      require(msg.value >= mul(margin2,1000000000000000000));
+      require(this.balance >= margin1);
+      counterparty2 = msg.sender;
+      currentState = SwapState.started;
+      paid[counterparty1] = false;
+      paid[counterparty2] = false;
+      return true;
   }
-
-    function __callback(bytes32 _oraclizeID, uint _result) {
-      if(msg.sender != oraclize_cbAddress()) throw;
-      if (_oraclizeID  == s_id){
-        startValue = mul(_result, 100000);
-        currentState = SwapState.started;
-      }
-      else if (_oraclizeID == e_id){
-        endValue = mul(_result,100000);
-        currentState = SwapState.validated;
-      }
-      else throw;
-    }
   
 
   mapping(uint => uint) shares;
 
-
-  function PaySwap() onlyState(SwapState.validated) returns (bool){
+  function PaySwap() onlyState(SwapState.started) returns (bool){
     Print("Counterparty1 Balance - ", counterparty1.balance);
     Print("Counterparty2 Balance - ", counterparty2.balance);
     Print("Contract Balance - ", this.balance);
+      uint startValue = RetrieveData(startDate);
+      uint endValue = RetrieveData(endDate);
     Print("Endvalue - ", endValue);
-    uint ratio = mul(100000,div(this.balance,add(margin1,margin2)));
-      uint lmargin = long ? div(mul(ratio,margin1),100000) : div(mul(ratio,margin2),100000);
-      uint smargin = long ? div(mul(ratio,margin2),100000) : div(mul(ratio,margin1),100000);
+      uint lmargin = long ? margin1 : margin2;
+      uint smargin = long ? margin2 : margin1;
       Print('Test',100*endValue/startValue);
       Print('Test2',100*smargin/notional);
       uint p1=div(mul(100,endValue),startValue);
@@ -127,6 +167,8 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
     Print("Lvalue - ", lvalue);
     Print("Svalue - ", svalue);
       //Validators:
+      var endName = RetrieveName(endDate);
+      require(endName == oracleName);
     if (msg.sender == counterparty1 && paid[counterparty1] == false){
         Print('Good1',lvalue);
         if (long){Print('GoodLvalue',lvalue); counterparty1.transfer(lvalue);paid[counterparty1] = true;}
@@ -144,11 +186,12 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
     return true;
   }
   function Exit(){
+    require(currentState != SwapState.ended);
     if (currentState == SwapState.open){
     if (msg.sender == counterparty1) selfdestruct(counterparty1);
     }
-  else if (currentState == SwapState.ended){throw;}
-  else{
+
+  else if (currentState == SwapState.started){
     var c = msg.sender == counterparty1 ? 1 : 0;
     var d = msg.sender == counterparty2 ? 2 : 0;
     var e = cancel + c + d;
@@ -167,9 +210,23 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
 
     }
   }
-  
+
 
 }
+
+
+  struct DocumentStruct{bytes32 name; uint value;}
+
+  function RetrieveData(bytes32 key) public constant returns(uint) {
+    DocumentStruct memory doc;
+    (doc.name,doc.value) = d.documentStructs(key);
+    return doc.value;
+  }
+    function RetrieveName(bytes32 key) public constant returns(bytes32) {
+    DocumentStruct memory doc;
+    (doc.name,doc.value) = d.documentStructs(key);
+    return doc.name;
+  }
 
     function test() payable{
         uint notional = 1000;
@@ -225,7 +282,8 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
 
 /*Tests:
 Remix:
-100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
+    true, 100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
+
 
 TestRPC
 

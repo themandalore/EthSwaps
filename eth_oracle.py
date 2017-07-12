@@ -42,6 +42,7 @@ def GDAX():
 	volume = response.json()['volume'] 
 	print(price,volume)
 	return [price,volume]
+	
 
 def Kraken():
 	url = "https://api.kraken.com/0/public/Ticker"
