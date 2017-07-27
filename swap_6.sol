@@ -19,7 +19,7 @@ contract Factory {
         require(msg.value >= .01 * 1000000000000000000);
         address newContract = new Swap(oracleID,oracleName,msg.sender,creator);
         newContracts.push(newContract);
-        Print(oracleID,newContract);
+        Print(msg.sender,newContract);
         return newContract;
     } 
     function withdrawFee() onlyOwner {

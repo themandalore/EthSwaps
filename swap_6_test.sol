@@ -21,7 +21,7 @@ contract Factory {
         Print2(this.balance);
         address newContract = new Swap(oracleID,oracleName,msg.sender,creator);
         newContracts.push(newContract);
-        Print(oracleID,newContract);
+        Print(msg.sender,newContract);
         Print2(this.balance);
         return newContract;
     } 

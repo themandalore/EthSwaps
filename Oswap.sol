@@ -1,25 +1,30 @@
+
+/* To do:
+Update to 4.12
+Allow factory to accept both token and ether
+Allow swap to be entered with token or ether
+Create withdrawal methodology
+*/
 pragma solidity ^0.4.11;
 
 
 contract Factory {
     address[] public newContracts;
     address public creator;
-    address public oracleID;
-    bytes32 public oracleName;
     modifier onlyOwner{if (msg.sender != creator){throw;}else{_;}}
     event Print(address _name, address _value);
+    event Print2(uint _name);
 
-    function Factory (bytes32 _oracleName, address _oracleID){
+    function Factory (){
         creator = msg.sender;  
-        oracleName = _oracleName;
-        oracleID = _oracleID;
     }
 
     function createContract () payable returns (address){
         if (msg.value < .01 * 1000000000000000000){throw;}
-        address newContract = new Swap(oracleID,oracleName,msg.sender,creator);
+        Print2(this.balance);
+        address newContract = new Swap(msg.sender,creator);
         newContracts.push(newContract);
-        Print(oracleID,newContract);
+        Print2(this.balance);
         return newContract;
     } 
     function withdrawFee() onlyOwner {
@@ -27,51 +32,10 @@ contract Factory {
     }
 }
 
-contract Oracle{
-    address private owner;
-    modifier onlyOwner{if (msg.sender != owner){throw;}else{_;}}
-    struct DocumentStruct{bytes32 name; uint value;}
-    mapping(bytes32 => DocumentStruct) public documentStructs;
-    
-    function Oracle(){
-        owner = msg.sender;
-    }
-    function StoreDocument(bytes32 key,bytes32 name, uint value) onlyOwner returns (bool success) {
-        documentStructs[key].value = value;
-        documentStructs[key].name = name;
-        return true;
-    }
+import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
 
-    function RetrieveData(bytes32 key) public constant returns(uint) {
-        var d = documentStructs[key].value;
-        return d;
-    }
-      function RetrieveName(bytes32 key) public constant returns(string) {
-        var d = documentStructs[key].name;
-        var e = bytes32ToString(d);
-        return e;
-    }
-    
-    function bytes32ToString(bytes32 x) constant returns (string) {
-    bytes memory bytesString = new bytes(32);
-    uint charCount = 0;
-    for (uint j = 0; j < 32; j++) {
-        byte char = byte(bytes32(uint(x) * 2 ** (8 * j)));
-        if (char != 0) {
-            bytesString[charCount] = char;
-            charCount++;
-        }
-    }
-    bytes memory bytesStringTrimmed = new bytes(charCount);
-    for (j = 0; j < charCount; j++) {
-        bytesStringTrimmed[j] = bytesString[j];
-    }
-    return string(bytesStringTrimmed);
-}
-}
-
-contract Swap {
-  enum SwapState {open,started,ended}
+contract Swap is usingOraclize{
+  enum SwapState {open,entered,started,validated,ended}
   SwapState public currentState;
   address public counterparty1;
   address public counterparty2;
@@ -79,68 +43,85 @@ contract Swap {
   bool public long;
   uint public margin1;
   uint public margin2;
-  address public oracleID;
-  bytes32 public oracleName;
-  bytes32 public startDate;
-  bytes32 public endDate;
+  string public url;
+  uint public duration;
+  uint public startValue;
+  uint public endValue;
+  bytes32 s_id;
+  bytes32 e_id;
   address public creator;
   uint public cancel;
 
-  mapping(address => uint256) balances;
+
+  event Print(string _name, uint _value);
+    mapping(address => uint256) balances;
 
 modifier onlyState(SwapState expectedState) { if (expectedState == currentState) {_;} else {throw; } }
-modifier onlyCreator{if (msg.sender != creator){throw;}else{_;}}
 
-
-
-Oracle d;
-
-  function Swap(address OAddress, bytes32 oname,address _cpty1, address _creator){
-      d = Oracle(OAddress);
-      oracleID = OAddress;
-      oracleName = oname;
+  function Swap(address _cpty1, address _creator){
       creator = _creator;
       counterparty1 = _cpty1;
     
   }
-  
-  function CreateSwap(bool ECP, uint _margin, uint _margin2, uint _notional, bool _long, bytes32 _startDate, bytes32 _endDate) payable {
-      if(!ECP){throw;}
+
+ 
+  function CreateSwap(string _url, uint _duration, uint _margin, uint _margin2, uint _notional, bool _long) payable {
       if(msg.sender != counterparty1){throw;}
       if(msg.value != mul(_margin,1000000000000000000)){throw;}
+      url = _url;
       cancel = 0;
       margin1 = _margin;
       margin2 = _margin2;
       notional = _notional;
       long = _long;
       currentState = SwapState.open;
-      endDate = _endDate;
-      startDate = _startDate;
+      duration = _duration;
+      Print('Margin- ',margin1);
+      log0("Testing Log");
+      //Validators:
       if (notional < _margin){throw;}
-      if (endDate < _startDate){throw;}
   }
   mapping(address => bool) paid;
-  function EnterSwap(bool ECP) onlyState(SwapState.open) payable returns (bool) {
-      if(!ECP){throw;}
+  function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
       if(msg.value == mul(margin2,1000000000000000000)) {
           if (this.balance < margin1) {throw;}
           counterparty2 = msg.sender;
-          currentState = SwapState.started;
+          currentState = SwapState.entered;
           paid[counterparty1] = false;
           paid[counterparty2] = false;
+          s_id = oraclize_query("URL",url);
+          e_id = oraclize_query(duration,"URL",url);
           return true;
       } else {throw;}
   }
+
+    function __callback(bytes32 _oraclizeID, uint _result) {
+      if(msg.sender != oraclize_cbAddress()) throw;
+      if (_oraclizeID  == s_id){
+        startValue = mul(_result, 100000);
+        currentState = SwapState.started;
+      }
+      else if (_oraclizeID == e_id){
+        endValue = mul(_result,100000);
+        currentState = SwapState.validated;
+      }
+      else throw;
+    }
   
 
   mapping(uint => uint) shares;
 
 
-  function PaySwap() onlyState(SwapState.started) returns (bool){
-      uint startValue = RetrieveData(startDate);
-      uint endValue = RetrieveData(endDate);
-      uint lmargin = long ? margin1 : margin2;
-      uint smargin = long ? margin2 : margin1;
+  function PaySwap() onlyState(SwapState.validated) returns (bool){
+    Print("Counterparty1 Balance - ", counterparty1.balance);
+    Print("Counterparty2 Balance - ", counterparty2.balance);
+    Print("Contract Balance - ", this.balance);
+    Print("Endvalue - ", endValue);
+    uint ratio = mul(100000,div(this.balance,add(margin1,margin2)));
+      uint lmargin = long ? div(mul(ratio,margin1),100000) : div(mul(ratio,margin2),100000);
+      uint smargin = long ? div(mul(ratio,margin2),100000) : div(mul(ratio,margin1),100000);
+      Print('Test',100*endValue/startValue);
+      Print('Test2',100*smargin/notional);
       uint p1=div(mul(100,endValue),startValue);
       uint p2=div(mul(100,smargin),notional);
       uint p3=div(mul(100,lmargin),notional);
@@ -149,26 +130,32 @@ Oracle d;
       else {shares[2] = div(mul(smargin,sub(200,p1)),100);shares[1] = div(mul(lmargin,p1),100);}
     uint lvalue = mul(shares[1],1000000000000000000);
     uint svalue =mul(shares[2],1000000000000000000);
+    Print ("Change - ", div(mul(100,endValue),startValue));
+    Print("Lvalue - ", lvalue);
+    Print("Svalue - ", svalue);
       //Validators:
-      var endName = RetrieveName(endDate);
-      if(endName != oracleName){throw;}
     if (msg.sender == counterparty1 && paid[counterparty1] == false){
-        if (long){counterparty1.transfer(lvalue);paid[counterparty1] = true;}
+        Print('Good1',lvalue);
+        if (long){Print('GoodLvalue',lvalue); counterparty1.transfer(lvalue);paid[counterparty1] = true;}
         else if (!long){counterparty1.transfer(svalue); paid[counterparty1] = true;}
     }
     else if (msg.sender == counterparty2 && paid[counterparty2] == false){
+        Print('Goods',svalue);
         if(!long){counterparty2.transfer(lvalue);paid[counterparty2] = true;}
-        else if (long){counterparty2.transfer(svalue); paid[counterparty2] = true;}
+        else if (long){ Print('Good2s',svalue); counterparty2.transfer(svalue); paid[counterparty2] = true;}
     }
     if (paid[counterparty1] && paid[counterparty2]){currentState = SwapState.ended;}
+    Print("Counterparty1 Balance - ", counterparty1.balance);
+    Print("Counterparty2 Balance - ", counterparty2.balance);
+    Print("Contract Balance - ", this.balance);
     return true;
   }
   function Exit(){
     if (currentState == SwapState.open){
     if (msg.sender == counterparty1) selfdestruct(counterparty1);
     }
-
-  else if (currentState == SwapState.started){
+  else if (currentState == SwapState.ended){throw;}
+  else{
     var c = msg.sender == counterparty1 ? 1 : 0;
     var d = msg.sender == counterparty2 ? 2 : 0;
     var e = cancel + c + d;
@@ -187,25 +174,34 @@ Oracle d;
 
     }
   }
-  else if (currentState == SwapState.ended){throw;}
+  
 
 }
 
+    function test() payable{
+        uint notional = 1000;
+        uint lmargin = 100;
+        uint smargin = 100;
+        uint endValue = 950;
+        uint startValue = 1000;
 
-  struct DocumentStruct{bytes32 name; uint value;}
-
-  function RetrieveData(bytes32 key) public constant returns(uint) {
-    DocumentStruct memory doc;
-    (doc.name,doc.value) = d.documentStructs(key);
-    return doc.value;
-  }
-    function RetrieveName(bytes32 key) public constant returns(bytes32) {
-    DocumentStruct memory doc;
-    (doc.name,doc.value) = d.documentStructs(key);
-    return doc.name;
-  }
-
-
+      uint p1=div(mul(100,endValue),startValue);
+      uint p2=div(mul(100,smargin),notional);
+      uint p3=div(mul(100,lmargin),notional);
+        Print('p1',p1);
+        Print('p2',p2);
+        Print('p3',p3);
+      if (sub(p1,p2) >= 100){shares[1] = 9999; shares[2] = 0;}
+      else if (add(p3,p1)  <= 100){shares[1] = 0; shares[2] =8888;}
+      else {shares[2] = div(mul(smargin,sub(200,p1)),100);shares[1] = div(mul(lmargin,p1),100);}
+    Print ('Short',shares[2]);
+    Print('Long',shares[1]);
+        uint lvalue = mul(shares[1],1000000000000000000);
+    uint svalue = mul(shares[2],1000000000000000000);
+    Print('l',lvalue);
+    Print('s',svalue);
+    Print('val',(msg.value));
+    }
   function mul(uint256 a, uint256 b) internal returns (uint256) {
     uint256 c = a * b;
     assert(a == 0 || c / a == b);

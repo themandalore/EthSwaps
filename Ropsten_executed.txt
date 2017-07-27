@@ -17,11 +17,18 @@ From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
 Address - 0x54cb60793be0616a5f59816b350158f48d42cce5 (2424652 gas)
 
 Notes:
-6/29 - 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
-	createContract - (returned: 0xfc87405af68bfa6cee1b1c643f6cc3bc9742ec1f)
+7/13- 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
+	createdContract - (returned: 0xc248de0871522e2487ce434465ec9c2a1ab6b4e6)
+7/13- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
+	createdContract - (returned: 0xf73629a8721355ee121c00bbed11a675fdf45bb3)
+7/18- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
+	createdContract - (returned: 0x6a8cf46471480e1a9f957dd4e2d2c8eaf35d9e0f)
 
 
 
 Swaps - 
+7/18- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
+	Address - 0x6a8cf46471480e1a9f957dd4e2d2c8eaf35d9e0f
+	Params = true,1, 1, 10, true, 20170718, 201707121
 
 

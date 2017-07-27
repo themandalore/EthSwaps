@@ -39,14 +39,17 @@ contract Oracle{
 '''
 
 '''This is a contract on Ropsten with 2 contracts deployed
-0x16c73e20ba46a20ecd6a78b5040d49b2358c5366
-0xd812626afd1c5a38f7428b23d8142d9e87bf544b
+7/13- 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
+	createdContract - (returned: 0xc248de0871522e2487ce434465ec9c2a1ab6b4e6)
+7/13- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
+	createdContract - (returned: 0xf73629a8721355ee121c00bbed11a675fdf45bb3)
+
 '''
 
 from web3 import Web3
 import json
 from web3.providers.rpc import HTTPProvider
-contractAddress = '0x3c7bec02bd4fa73dce24413d2a13c02e1a91e858'
+contractAddress = '0x54cb60793be0616a5f59816b350158f48d42cce5'
 web3 = Web3(HTTPProvider('https://ropsten.infura.io'))
 with open('factory.json', 'r') as abi_definition:
     abi = json.load(abi_definition)
@@ -54,11 +57,11 @@ print (web3.eth.blockNumber)
 
 #abi is swap API created from factory
 fContract = web3.eth.contract(abi,contractAddress)
-print (fContract.abi)
 print ('Creator',fContract.call().creator)
 print ('Contracts',fContract.call().newContracts)
 var1 = fContract.call()._oracleName
 var2 = fContract.call().oracleName
+print(fContract)
 
 print()
 print ('var1',var1)

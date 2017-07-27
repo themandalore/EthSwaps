@@ -25,26 +25,101 @@ testrpc
 npm install
 
 // Run node console (need to be inside the same folder as package.json)
+// cd C:/Code/company/js
 node
 
 // INSIDE NODE CONSOLE
-
-
-var Web3 = require("web3")
-var solc = require("solc")
-var web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io"))
+const Web3 = require("web3");
+const solc = require("solc");
+const web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io"));
 web3.eth.accounts
-
 
 var abi = [{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"createContract","outputs":[{"name":"","type":"address"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"oracleName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"newContracts","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"withdrawFee","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"inputs":[{"name":"_oracleName","type":"bytes32"},{"name":"_oracleID","type":"address"}],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"_name","type":"address"},{"indexed":false,"name":"_value","type":"address"}],"name":"Print","type":"event"}]
 var fContract = web3.eth.contract(abi)
-var fContractInstance = fContract.at('0x3c7bec02bd4fa73dce24413d2a13c02e1a91e858')
+var fContractInstance = fContract.at('0x54cb60793be0616a5f59816b350158f48d42cce5')
 
-deployed.EnterSwap({from: account2, data: bytecode, gas: 4700000, gasPrice: 5, value: web3.toWei(10,'ether')}, (error, contract) => {})
-fContractInstance.oracleName.call()
+fContractInstance.oracleName.call()fCo
 fContractInstance.newContracts.call()
 fContractInstance.oracleID.call()
 fContractInstance.creator.call()
 
+//this gets length of newContracts
+var i = 4
+var j = 0
+while (i>3) {var x = fContractInstance.newContracts.call(j);j++;var i = x.length}
+var swaps = j-1
 
-var events = fContractInstance.allEvents({fromBlock: 0, toBlock: 'latest'});
+
+var swapABI =[{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"long","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"startDate","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"currentState","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"ECP","type":"bool"},{"name":"_margin","type":"uint256"},{"name":"_margin2","type":"uint256"},{"name":"_notional","type":"uint256"},{"name":"_long","type":"bool"},{"name":"_startDate","type":"bytes32"},{"name":"_endDate","type":"bytes32"}],"name":"CreateSwap","outputs":[],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty2","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty1","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"margin1","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveData","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"margin2","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"endDate","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"Exit","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"PaySwap","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"cancel","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"notional","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"ECP","type":"bool"}],"name":"EnterSwap","outputs":[{"name":"","type":"bool"}],"payable":true,"type":"function"},{"inputs":[{"name":"OAddress","type":"address"},{"name":"oname","type":"bytes32"},{"name":"_cpty1","type":"address"},{"name":"_creator","type":"address"}],"payable":false,"type":"constructor"}]
+var sContract = web3.eth.contract(swapABI)
+
+var i = 0;
+while(i<swaps){
+	var j = 1;
+	console.log(fContractInstance.newContracts.call(i));
+	var sInstance = sContract.at(fContractInstance.newContracts.call(i));
+	if (sInstance.notional.call().toNumber() >0){
+	var j = sInstance.currentState.call().toNumber();
+	if (j==0) console.log('Notional-', sInstance.notional.call().toNumber(), ' Long-',sInstance.long.call(),' Margin1-',sInstance.margin1.call().toNumber(),
+	' Margin2-',sInstance.margin2.call().toNumber(),' StartDate-',web3..toAscii(sInstance.startDate.call()),' endDate-',web3..toAscii(sInstance.endDate.call()));
+	}
+	i++;
+}
+fContractInstance.newContracts.call(2);
+var sInstance = sContract.at(fContractInstance.newContracts.call(2));
+sInstance.currentState.call().toNumber()
+sInstance.notional.call().toNumber()
+console.log('Notional-',sInstance.notional.call().toNumber())
+
+
+//testing
+
+var account1 = web3.eth.accounts[0]
+var account2 = web3.eth.accounts[1]
+var account3= web3.eth.accounts[2]
+var balance = (acct) => { return web3.fromWei(web3.eth.getBalance(acct), 'ether').toNumber()}
+var ibal1 = balance(account1)
+var ibal2 = balance(account2)
+var ibal3 = balance(account3)
+
+var oabi = [{"constant":true,"inputs":[{"name":"","type":"bytes32"}],"name":"documentStructs","outputs":[{"name":"name","type":"bytes32"},{"name":"value","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveData","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"x","type":"bytes32"}],"name":"bytes32ToString","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveName","outputs":[{"name":"","type":"string"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"key","type":"bytes32"},{"name":"name","type":"bytes32"},{"name":"value","type":"uint256"}],"name":"StoreDocument","outputs":[{"name":"success","type":"bool"}],"payable":false,"type":"function"},{"inputs":[],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"_name","type":"string"},{"indexed":false,"name":"_value","type":"uint256"}],"name":"Print","type":"event"}]
+var sabi = [{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"long","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"startDate","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"currentState","outputs":[{"name":"","type":"uint8"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"ECP","type":"bool"},{"name":"_margin","type":"uint256"},{"name":"_margin2","type":"uint256"},{"name":"_notional","type":"uint256"},{"name":"_long","type":"bool"},{"name":"_startDate","type":"bytes32"},{"name":"_endDate","type":"bytes32"}],"name":"CreateSwap","outputs":[],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty2","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"counterparty1","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"margin1","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveData","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"margin2","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"key","type":"bytes32"}],"name":"RetrieveName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"endDate","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"Exit","outputs":[],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"PaySwap","outputs":[{"name":"","type":"bool"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"cancel","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"notional","outputs":[{"name":"","type":"uint256"}],"payable":false,"type":"function"},{"constant":false,"inputs":[{"name":"ECP","type":"bool"}],"name":"EnterSwap","outputs":[{"name":"","type":"bool"}],"payable":true,"type":"function"},{"inputs":[{"name":"OAddress","type":"address"},{"name":"oname","type":"bytes32"},{"name":"_cpty1","type":"address"},{"name":"_creator","type":"address"}],"payable":false,"type":"constructor"}]
+var swapContract = web3.eth.contract(sabi)
+var oContract = web3.eth.contract(oabi)
+
+var oracleInstance = oracleContract.new({data:' ..', from: account1 , gas: 3000000});
+var oracleAddress = oracleInstance.address
+web3.eth.defaultAccount = account1
+oracleInstance.StoreDocument(web3..fromAscii("20170714"),"ETHUSD",1000,{value: 0, gas: 3000000});
+oracleInstance.StoreDocument(web3..fromAscii("20170717"),"ETHUSD",1050,{value: 0, gas: 3000000});
+
+var fInstance= fContract.new({data:"BTCUSD",oracleAddress, from: account1 , gas: 3000000});
+
+var events = fInstance.allEvents();
+events.watch(function(error, event){
+    if (error) {
+        console.log("Error: " + error);
+    } else {
+	result = JSON.stringify(event.args);
+        console.log(event.event + ": " + JSON.stringify(event.args));
+    }
+});
+
+web3.eth.defaultAccount = account2
+fInstance.createContract({value:web3.toWei('.01', 'ether') margin, gas: 3000000})
+var oracleAddress = oracleInstance.address
+var sAddress = result[:32]
+
+var sContractInstance = swapContract.at(sAddress)
+sContractInstance.CreateSwap(true,100, 100, 1000, true, web3..fromAscii("20170714"),web3..fromAscii("20170717"),{value:web3.toWei('100', 'ether') gas: 3000000});
+
+web3.eth.defaultAccount = account3
+sContractInstance.EnterSwap(true{value:web3.toWei('100', 'ether') ,gas: 3000000});
+
+sContractInstance.PaySwap(,{value:0, gas: 3000000});
+web3.eth.defaultAccount = account2
+sContractInstance.PaySwap(,{value:0,gas: 3000000});
+
+//withdraw from factory
+web3.eth.defaultAccount = account1
+fInstance.withdrawFee({value:0, gas: 3000000})
