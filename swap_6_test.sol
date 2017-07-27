@@ -160,7 +160,19 @@ Oracle d;
       uint p3=div(mul(100,lmargin),notional);
       if (sub(p1,p2) >= 100){shares[1] = div(this.balance,1000000000000000000); shares[2] = 0;}
       else if (add(p3,p1)  <= 100){shares[1] = 0; shares[2] =div(this.balance,1000000000000000000);}
-      else {shares[2] = div(mul(smargin,sub(200,p1)),100);shares[1] = div(mul(lmargin,p1),100);}
+      else {
+          if (p1<100){
+              uint i = mul(sub(100,p1),10);
+              shares[1] = i;
+              shares[2] = sub(add(lmargin,smargin),i);
+          }
+          
+          if (p1 > 100){
+               uint j = mul(sub(p1,100),10);
+               shares[2] = j;
+               shares[1] = sub(add(lmargin,smargin),j);
+          }
+      }
     uint lvalue = mul(shares[1],1000000000000000000);
     uint svalue =mul(shares[2],1000000000000000000);
     Print ("Change - ", div(mul(100,endValue),startValue));
