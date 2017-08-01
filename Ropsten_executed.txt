@@ -1,5 +1,5 @@
 /*Ropsten*/
-Using Swaps_6.sol
+Using Swaps_7.sol
 
 
 Oracle - 7/9/2017
@@ -7,28 +7,46 @@ From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
 Address - 0x4f1bE30be81ee7D88e64d41955B57F39c5aA35bF  (gas: 527392)
 Notes:
        StoreDocument - 7/9 - 20170709,"BTCUSD",250035  (gas: 74747)
+		  - 7/29 - "0x3230313730373239","BTCUSD",269754
+		  - 7/30 - "0x3230313730373330","BTCUSD",256266 (5% decrease for testing)
 
 
 
-
-Factory - 7/9/2017
+Factory - 7/30/2017
 From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
-"BTCUSD","0x4f1bE30be81ee7D88e64d41955B57F39c5aA35bF"
-Address - 0x54cb60793be0616a5f59816b350158f48d42cce5 (2424652 gas)
+"0x4f1bE30be81ee7D88e64d41955B57F39c5aA35bF"
+Address - 0x8d3cbc2cba343b97f656428eafa857ee01bda53b(2276771 gas)
 
 Notes:
-7/13- 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
-	createdContract - (returned: 0xc248de0871522e2487ce434465ec9c2a1ab6b4e6)
-7/13- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
-	createdContract - (returned: 0xf73629a8721355ee121c00bbed11a675fdf45bb3)
-7/18- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
-	createdContract - (returned: 0x6a8cf46471480e1a9f957dd4e2d2c8eaf35d9e0f)
+7/30- 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
+	createdContract - (returned: 0xc0bf82bc5c72a5a333f0065e9f378672a94d6aa3 )(gas:1344553)
+7/30- 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
+	createdContract - (returned: 0xc0bf82bc5c72a5a333f0065e9f378672a94d6aa3 )(gas:1344553)
 
 
 
 Swaps - 
-7/18- 	From - 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
-	Address - 0x6a8cf46471480e1a9f957dd4e2d2c8eaf35d9e0f
-	Params = true,1, 1, 10, true, 20170718, 201707121
+7/30- 	From - 0x939DD3E2DE8f472573364B3df1337857E758d90D
+	Address - 0xc0bf82bc5c72a5a333f0065e9f378672a94d6aa3
+	Params = true,1, 1, 10, false, "0x3230313730373239", "0x3230313730373330"   (20170729,20170730) (gas:161047)
+	Enter - 7/30 - from: 0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE
+		params: true (gas:59729)
+	Calculation - gas:86380
+	Paid- sgas: 52503   lgas:58224
 
 
+
+
+Test before dep:
+Before Swap:
+Account1 - 1.599
+Account2- 4.924477986
+
+Before Payment:
+Account1 - 0.5975 (short party/calculate party)
+Account2 - 3.919 (long party)
+
+
+After payment
+Account1 - 2.083
+Account2 - 4.427

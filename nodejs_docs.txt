@@ -1,19 +1,5 @@
-From putty:
-Host name:
-ec2-user@ec2-52-42-139-211.us-west-2.compute.amazonaws.com 
-
-Then in SSH/Auth click browse and link to EthDevops.ppk
-click connect, then once open, right click top box and click new session 
-click new session again (one node, one testrpc, one base terminal)
-
-20170518,"BTCUSD"1000
-20170519,"BTCUSD",900
-
-From base:
-testrpc
-
-// Make a new folder
-// Create pacakge.json file
+//first time:
+// Make a new folder - Create pacakge.json file
 {
   "dependencies": {
     "web3": "0.17.0-alpha",
@@ -23,22 +9,130 @@ testrpc
 
 // Install dependencies (need to be inside the same folder as package.json)
 npm install
+npm install ethereumjs-tx
 
+
+/*subsequent times----------------------------------------*/
+ac
 // Run node console (need to be inside the same folder as package.json)
 // cd C:/Code/company/js
 node
 
 // INSIDE NODE CONSOLE
 const Web3 = require("web3");
+const fs = require('fs');
 const solc = require("solc");
+const Tx = require('ethereumjs-tx')
 const web3 = new Web3(new Web3.providers.HttpProvider("https://ropsten.infura.io"));
 web3.eth.accounts
 
-var abi = [{"constant":true,"inputs":[],"name":"creator","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"createContract","outputs":[{"name":"","type":"address"}],"payable":true,"type":"function"},{"constant":true,"inputs":[],"name":"oracleName","outputs":[{"name":"","type":"bytes32"}],"payable":false,"type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"newContracts","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"constant":false,"inputs":[],"name":"withdrawFee","outputs":[],"payable":false,"type":"function"},{"constant":true,"inputs":[],"name":"oracleID","outputs":[{"name":"","type":"address"}],"payable":false,"type":"function"},{"inputs":[{"name":"_oracleName","type":"bytes32"},{"name":"_oracleID","type":"address"}],"payable":false,"type":"constructor"},{"anonymous":false,"inputs":[{"indexed":false,"name":"_name","type":"address"},{"indexed":false,"name":"_value","type":"address"}],"name":"Print","type":"event"}]
+
+var account1= "0xE5078b80b08bD7036fc0f7973f667b6aa9B4ddBE";
+var key1 = new Buffer('d941dcf24a8841fda45f3b0e52d2987a1f9131233caa3a0566b0c91910af85af', 'hex')
+
+var account2 = "0x939DD3E2DE8f472573364B3df1337857E758d90D";
+var key2 = new Buffer('f47e6311420a4fc5e900cb9aebec5387b7b56228bbeb887b7de424f8af9b1a74, 'hex')
+
+/*launch new factory----------------------------------------*/
+var input1 = fs.readFileSync('./best/Factory.sol');
+var foutput = solc.compile(input1.toString(), 1);
+var bcode = foutput.contracts[':Factory'].bytecode;
+const abi = JSON.parse(foutput.contracts[':Factory'].interface);
 var fContract = web3.eth.contract(abi)
+var fConData = fContract.new.getData({
+    data: '0x' + bcode
+});
+
+const gasPrice = web3.eth.gasPrice;
+const gasPriceHex = web3.toHex(gasPrice);
+const gasLimitHex = web3.toHex(3000000);
+
+var noncey = '0x' + new Date().getTime();
+
+var fTx = {
+    nonce: noncey,
+    gasPrice: gasPriceHex,
+    gasLimit: gasLimitHex,
+    data: fConData,
+    from: account1
+};
+
+var txx = new Tx(fTx);
+txx.sign(key1);
+
+var sTx =txx.serialize();
+
+
+function waitForTransactionReceipt(hash) {
+    console.log('waiting for contract to be mined');
+    const receipt = web3.eth.getTransactionReceipt(hash);
+    // If no receipt, try again in 1s
+    if (receipt == null) {
+        setTimeout(() => {
+            waitForTransactionReceipt(hash);
+        }, 100);
+    } else {
+        // The transaction was mined, we can retrieve the contract address
+        console.log('contract address: ' + receipt.contractAddress);
+        //testContract(receipt.contractAddress);
+    }
+}
+
+web3.eth.sendRawTransaction('0x' + sTx.toString('hex'), (err, hash) => {
+    if (err) { console.log(err); return; }
+
+    // Log the tx, you can explore status manually with eth.getTransaction()
+    console.log('contract creation tx: ' + hash);
+
+    // Wait for the transaction to be mined
+    waitForTransactionReceipt(hash);
+});
+
+
+
+
+/*launch new oracle-----------------------------------------------------------*/
+
+const txParams = {
+  nonce: '0x00',
+  gasPrice: '0x09184e72a000', 
+  gasLimit: '0x2710',
+  to: '0x0000000000000000000000000000000000000000', 
+  value: '0x00', 
+  data: '0x7f7465737432000000000000000000000000000000000000000000000000000000600057',
+  // EIP 155 chainId - mainnet: 1, ropsten: 3 
+  chainId: 3
+}
+ 
+const tx = new EthereumTx(txParams)
+tx.sign(privateKey)
+const serializedTx = tx.serialize()
+
+/*launch swap---------------------------------------------------------*/
+const txParams = {
+  nonce: '0x00',
+  gasPrice: '0x09184e72a000', 
+  gasLimit: '0x2710',
+  to: '0x0000000000000000000000000000000000000000', 
+  value: '0x00', 
+  data: '0x7f7465737432000000000000000000000000000000000000000000000000000000600057',
+  // EIP 155 chainId - mainnet: 1, ropsten: 3 
+  chainId: 3
+}
+ 
+const tx = new EthereumTx(txParams)
+tx.sign(privateKey)
+const serializedTx = tx.serialize()
+
+
+-----------------------------------------------------------------------------------
+
+
+
+/*use existing*/
 var fContractInstance = fContract.at('0x54cb60793be0616a5f59816b350158f48d42cce5')
 
-fContractInstance.oracleName.call()fCo
+fContractInstance.oracleName.call()
 fContractInstance.newContracts.call()
 fContractInstance.oracleID.call()
 fContractInstance.creator.call()
