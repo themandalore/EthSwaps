@@ -29,6 +29,7 @@ modifier updateAccount(address account) {
   }
   _;
 }
+
 function disburse(uint amount) {
   totalDividendPoints += (amount / totalSupply);
   totalSupply += amount;

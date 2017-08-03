@@ -1,17 +1,14 @@
 
 /* To do:
-Update to 4.12
-Allow factory to accept both token and ether
-Allow swap to be entered with token or ether
-Create withdrawal methodology
+Update to 4.13
 */
-pragma solidity ^0.4.11;
+pragma solidity ^0.4.13;
 
 
 contract Factory {
     address[] public newContracts;
     address public creator;
-    modifier onlyOwner{if (msg.sender != creator){throw;}else{_;}}
+    modifier onlyOwner{require(msg.sender == creator); _;}
     event Print(address _name, address _value);
     event Print2(uint _name);
 
@@ -20,10 +17,11 @@ contract Factory {
     }
 
     function createContract () payable returns (address){
-        if (msg.value < .01 * 1000000000000000000){throw;}
+        require(msg.value >= .01 * 1000000000000000000);
         Print2(this.balance);
         address newContract = new Swap(msg.sender,creator);
         newContracts.push(newContract);
+        Print(msg.sender,newContract);
         Print2(this.balance);
         return newContract;
     } 
@@ -35,14 +33,13 @@ contract Factory {
 import "github.com/oraclize/ethereum-api/oraclizeAPI.sol";
 
 contract Swap is usingOraclize{
-  enum SwapState {open,entered,started,validated,ended}
+  enum SwapState {open,started,ready,ended}
   SwapState public currentState;
-  address public counterparty1;
-  address public counterparty2;
+  address public long_party;
+  address public short_party;
   uint public notional;
-  bool public long;
-  uint public margin1;
-  uint public margin2;
+  uint public lmargin
+  uint public smargin
   string public url;
   uint public duration;
   uint public startValue;
@@ -51,6 +48,8 @@ contract Swap is usingOraclize{
   bytes32 e_id;
   address public creator;
   uint public cancel;
+  bool long;
+  address party;
 
 
   event Print(string _name, uint _value);
@@ -60,50 +59,54 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
 
   function Swap(address _cpty1, address _creator){
       creator = _creator;
-      counterparty1 = _cpty1;
-    
+      party = _cpty1;
   }
 
  
   function CreateSwap(string _url, uint _duration, uint _margin, uint _margin2, uint _notional, bool _long) payable {
-      if(msg.sender != counterparty1){throw;}
-      if(msg.value != mul(_margin,1000000000000000000)){throw;}
+      require (msg.sender == party);
+      require(msg.value == mul(_margin,1000000000000000000));
       url = _url;
       cancel = 0;
-      margin1 = _margin;
-      margin2 = _margin2;
       notional = _notional;
       long = _long;
       currentState = SwapState.open;
       duration = _duration;
+      if (long){long_party = msg.sender;
+        lmargin = mul(_margin,1000000000000000000);
+        smargin = mul(_margin2,1000000000000000000);}
+      else {short_party = msg.sender;
+        smargin = mul(_margin,1000000000000000000);
+        lmargin = mul(_margin2,1000000000000000000);
+      }
       Print('Margin- ',margin1);
       log0("Testing Log");
       //Validators:
-      if (notional < _margin){throw;}
   }
   mapping(address => bool) paid;
   function EnterSwap() onlyState(SwapState.open) payable returns (bool) {
-      if(msg.value == mul(margin2,1000000000000000000)) {
-          if (this.balance < margin1) {throw;}
-          counterparty2 = msg.sender;
-          currentState = SwapState.entered;
-          paid[counterparty1] = false;
-          paid[counterparty2] = false;
-          s_id = oraclize_query("URL",url);
-          e_id = oraclize_query(duration,"URL",url);
-          return true;
-      } else {throw;}
+      if (long) {short_party = msg.sender;
+      require(msg.value >= smargin);
+        }
+      else {long_party = msg.sender;
+      require(msg.value >=lmargin);
+        }
+      paid[long_party] = false;
+      paid[short_party] = false;
+      s_id = oraclize_query("URL",url);
+      e_id = oraclize_query(duration,"URL",url);
+      currentState = SwapState.started;
+      return true;
   }
 
     function __callback(bytes32 _oraclizeID, uint _result) {
-      if(msg.sender != oraclize_cbAddress()) throw;
+      require(msg.sender == oraclize_cbAddress());
       if (_oraclizeID  == s_id){
         startValue = mul(_result, 100000);
-        currentState = SwapState.started;
       }
       else if (_oraclizeID == e_id){
         endValue = mul(_result,100000);
-        currentState = SwapState.validated;
+        currentState = SwapState.ready;
       }
       else throw;
     }
@@ -112,96 +115,68 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
   mapping(uint => uint) shares;
 
 
-  function PaySwap() onlyState(SwapState.validated) returns (bool){
-    Print("Counterparty1 Balance - ", counterparty1.balance);
-    Print("Counterparty2 Balance - ", counterparty2.balance);
+  function PaySwap() onlyState(SwapState.ready) returns (bool){
+    Print("Counterparty1 Balance - ", long_party.balance);
+    Print("Counterparty2 Balance - ", short_party.balance);
     Print("Contract Balance - ", this.balance);
     Print("Endvalue - ", endValue);
-    uint ratio = mul(100000,div(this.balance,add(margin1,margin2)));
-      uint lmargin = long ? div(mul(ratio,margin1),100000) : div(mul(ratio,margin2),100000);
-      uint smargin = long ? div(mul(ratio,margin2),100000) : div(mul(ratio,margin1),100000);
-      Print('Test',100*endValue/startValue);
-      Print('Test2',100*smargin/notional);
-      uint p1=div(mul(100,endValue),startValue);
-      uint p2=div(mul(100,smargin),notional);
-      uint p3=div(mul(100,lmargin),notional);
-      if (sub(p1,p2) >= 100){shares[1] = div(this.balance,1000000000000000000); shares[2] = 0;}
-      else if (add(p3,p1)  <= 100){shares[1] = 0; shares[2] =div(this.balance,1000000000000000000);}
-      else {shares[2] = div(mul(smargin,sub(200,p1)),100);shares[1] = div(mul(lmargin,p1),100);}
-    uint lvalue = mul(shares[1],1000000000000000000);
-    uint svalue =mul(shares[2],1000000000000000000);
-    Print ("Change - ", div(mul(100,endValue),startValue));
+    uint p1=div(mul(1000,RetrieveData(endDate)),RetrieveData(startDate));
+        if (p1 == 1000){
+            shares[1] = lmargin;
+            shares[2] = smargin;
+        }
+          if (p1<1000){
+              if(mul(sub(1000,p1),1000000000000000000)>lmargin){shares[1] = 0; shares[2] =this.balance;}
+              shares[1] = mul(mul(sub(1000,p1),notional),div(1000000000000000000,1000));
+              shares[2] = this.balance -  shares[1];
+          }
+          
+          else if (p1 > 1000){
+               if(mul(sub(p1,1000),1000000000000000000)>smargin){shares[2] = 0; shares[1] =this.balance;}
+               shares[2] = mul(mul(sub(1000,p1),notional),div(1000000000000000000,1000));
+               shares[1] = this.balance - mul(shares[2],div(1000000000000000000,1000));
+          }
     Print("Lvalue - ", lvalue);
     Print("Svalue - ", svalue);
       //Validators:
-    if (msg.sender == counterparty1 && paid[counterparty1] == false){
-        Print('Good1',lvalue);
-        if (long){Print('GoodLvalue',lvalue); counterparty1.transfer(lvalue);paid[counterparty1] = true;}
-        else if (!long){counterparty1.transfer(svalue); paid[counterparty1] = true;}
+  if (msg.sender == long_party && paid[long_party] == false){
+        paid[long_party] = true;long_party.send(shares[1]);
     }
-    else if (msg.sender == counterparty2 && paid[counterparty2] == false){
-        Print('Goods',svalue);
-        if(!long){counterparty2.transfer(lvalue);paid[counterparty2] = true;}
-        else if (long){ Print('Good2s',svalue); counterparty2.transfer(svalue); paid[counterparty2] = true;}
+    else if (msg.sender == short_party && paid[short_party] == false){
+        paid[short_party] = true;short_party.send(shares[2]);
     }
-    if (paid[counterparty1] && paid[counterparty2]){currentState = SwapState.ended;}
-    Print("Counterparty1 Balance - ", counterparty1.balance);
-    Print("Counterparty2 Balance - ", counterparty2.balance);
+    if (paid[long_party] && paid[short_party]){currentState = SwapState.ended;}
+    return true;
+    Print("Counterparty1 Balance - ", long_party.balance);
+    Print("Counterparty2 Balance - ", short_party.balance);
     Print("Contract Balance - ", this.balance);
     return true;
   }
   function Exit(){
+    require(currentState != SwapState.ended);
     if (currentState == SwapState.open){
-    if (msg.sender == counterparty1) selfdestruct(counterparty1);
+    if (msg.sender == party) selfdestruct(party);
     }
-  else if (currentState == SwapState.ended){throw;}
-  else{
-    var c = msg.sender == counterparty1 ? 1 : 0;
-    var d = msg.sender == counterparty2 ? 2 : 0;
+
+  else if (currentState == SwapState.started){
+    var c = msg.sender == long_party ? 1 : 0;
+    var d = msg.sender == short_party ? 2 : 0;
     var e = cancel + c + d;
     cancel = c + d;
     if (e > 2){
-      if (msg.sender == counterparty1){ 
-        counterparty2.transfer(margin1);
-        counterparty1.transfer(margin2);
-        selfdestruct(counterparty1);
+      if (msg.sender == short_party){ 
+        long_party.send(lmargin);
+        short_party.send(smargin);
       }
-      if (msg.sender == counterparty2){ 
-        counterparty1.transfer(margin1);
-        counterparty2.transfer(margin2);
-        selfdestruct(counterparty1);
-      }
+      else if (msg.sender == long_party){ 
+        short_party.send(smargin);
+        long_party.send(lmargin);
+        }
 
+      }
     }
+
   }
-  
-
-}
-
-    function test() payable{
-        uint notional = 1000;
-        uint lmargin = 100;
-        uint smargin = 100;
-        uint endValue = 950;
-        uint startValue = 1000;
-
-      uint p1=div(mul(100,endValue),startValue);
-      uint p2=div(mul(100,smargin),notional);
-      uint p3=div(mul(100,lmargin),notional);
-        Print('p1',p1);
-        Print('p2',p2);
-        Print('p3',p3);
-      if (sub(p1,p2) >= 100){shares[1] = 9999; shares[2] = 0;}
-      else if (add(p3,p1)  <= 100){shares[1] = 0; shares[2] =8888;}
-      else {shares[2] = div(mul(smargin,sub(200,p1)),100);shares[1] = div(mul(lmargin,p1),100);}
-    Print ('Short',shares[2]);
-    Print('Long',shares[1]);
-        uint lvalue = mul(shares[1],1000000000000000000);
-    uint svalue = mul(shares[2],1000000000000000000);
-    Print('l',lvalue);
-    Print('s',svalue);
-    Print('val',(msg.value));
-    }
   function mul(uint256 a, uint256 b) internal returns (uint256) {
     uint256 c = a * b;
     assert(a == 0 || c / a == b);
@@ -229,24 +204,3 @@ modifier onlyState(SwapState expectedState) { if (expectedState == currentState)
 
 
 }
-
-/*Tests:
-Remix:
-100, 100, 1000, true, 20170614, 20170617  -20170614,"BTCUSD",1000  -  20170617,"BTCUSD",1050
-
-TestRPC
-
-Truffle 
-
-Testnet
-
-Mainnet
-
-
-To test: 
-all exit scenarios
-Negative Gain
-Zero out pos / neg gains
-Errors -- big numbers, non oracle values, all margin values, enormous notionals
-
-*/
